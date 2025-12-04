@@ -36,6 +36,7 @@
     "pg": "^8.16.0",
     "shell-quote": "^1.8.3",
     "spawn-rx": "^5.1.2",
+    "uuid": "^11.0.3",
     "zod": "^3.25.64"
   },
   "devDependencies": {
@@ -47,6 +48,7 @@
     "@types/node": "^20.0.0",
     "@types/pg": "^8.15.4",
     "@types/shell-quote": "^1.7.5",
+    "@types/uuid": "^10.0.0",
     "dotenv-cli": "^8.0.0",
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.28.0",

@@ -386,19 +386,24 @@ export const mcpServersImplementations = {
         }
       }
 
-      // Invalidate idle session for the updated server to refresh with new parameters (async)
+      // Invalidate all sessions (idle and active) for the updated server to refresh with new parameters (async)
       const serverParams = await convertDbServerToParams(updatedServer);
       if (serverParams) {
         mcpServerPool
-          .invalidateIdleSession(updatedServer.uuid, serverParams)
+          .invalidateServerSessions(updatedServer.uuid)
           .then(() => {
             console.log(
-              `Invalidated and refreshed idle session for updated server: ${updatedServer.name} (${updatedServer.uuid})`,
+              `Invalidated all sessions for updated server: ${updatedServer.name} (${updatedServer.uuid})`,
+            );
+            // After invalidating, ensure we have an idle session ready for new connections
+            return mcpServerPool.ensureIdleSessionForNewServer(
+              updatedServer.uuid,
+              serverParams,
             );
           })
           .catch((error) => {
             console.error(
-              `Error invalidating idle session for updated server ${updatedServer.name} (${updatedServer.uuid}):`,
+              `Error invalidating sessions for updated server ${updatedServer.name} (${updatedServer.uuid}):`,
               error,
             );
           });

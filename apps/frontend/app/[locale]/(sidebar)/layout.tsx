@@ -9,6 +9,7 @@ import {
   SearchCode,
   Server,
   Settings,
+  ShieldAlert,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import { useEffect, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogsStatusIndicator } from "@/components/logs-status-indicator";
+import { IPIDecisionModal } from "@/components/ipi-decision-modal";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -75,6 +77,11 @@ const getMenuItems = (t: (key: string) => string, locale: SupportedLocale) => [
     url: getLocalizedPath("/settings", locale),
     icon: Settings,
   },
+  {
+    title: "IPI Detection",
+    url: getLocalizedPath("/ipi-detection", locale),
+    icon: ShieldAlert,
+  },
 ];
 
 function LiveLogsMenuItem() {
@@ -119,7 +126,7 @@ function UserInfoFooter() {
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
-          <p className="text-xs text-muted-foreground">v2.4.16</p>
+          <p className="text-xs text-muted-foreground">v2.4.17</p>
         </div>
         <Separator />
         {user && (

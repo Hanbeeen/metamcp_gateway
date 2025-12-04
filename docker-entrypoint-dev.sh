@@ -60,6 +60,10 @@ echo "🛠 Running database migrations (dev)..."
     set -e
     cd apps/backend
     # drizzle-kit reads DATABASE_URL from env (compose provides it)
+    # Force internal database URL to avoid host .env conflict
+    export DATABASE_URL="postgresql://${POSTGRES_USER:-metamcp_user}:${POSTGRES_PASSWORD:-m3t4mcp}@postgres:5432/${POSTGRES_DB:-metamcp_db}"
+    echo "🔧 Using DATABASE_URL for migration: $DATABASE_URL"
+    
     if pnpm exec drizzle-kit migrate; then
         echo "✅ Migrations applied successfully"
     else

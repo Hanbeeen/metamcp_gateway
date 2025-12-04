@@ -100,6 +100,24 @@ sseRouter.get(
   },
 );
 
+// Handle POST to /sse (client fallback error)
+sseRouter.post(
+  "/:endpoint_name/sse",
+  lookupEndpoint,
+  authenticateApiKey,
+  (req, res) => {
+    console.warn(
+      `Received POST request to /sse endpoint for ${req.params.endpoint_name}. This is likely a client configuration error. SSE endpoints only support GET for connection. Use /message for sending messages or /mcp for StreamableHTTP.`,
+    );
+    res.status(405).json({
+      error: "Method Not Allowed",
+      message:
+        "SSE endpoints only support GET requests for connection. Use /message for sending messages.",
+      hint: "If you are using StreamableHTTP, ensure you are using the /mcp endpoint.",
+    });
+  },
+);
+
 sseRouter.post(
   "/:endpoint_name/message",
   lookupEndpoint,

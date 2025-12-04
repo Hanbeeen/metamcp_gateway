@@ -87,9 +87,9 @@ export default function McpServersPage() {
     // Parse args string into array by splitting on spaces
     const argsArray = data.args
       ? data.args
-          .trim()
-          .split(/\s+/)
-          .filter((arg) => arg.length > 0)
+        .trim()
+        .split(/\s+/)
+        .filter((arg) => arg.length > 0)
       : [];
 
     // Parse env string into object
@@ -214,7 +214,7 @@ export default function McpServersPage() {
                                 : field.value === McpServerTypeEnum.Enum.SSE
                                   ? t("mcp-servers:sse")
                                   : field.value ===
-                                      McpServerTypeEnum.Enum.STREAMABLE_HTTP
+                                    McpServerTypeEnum.Enum.STREAMABLE_HTTP
                                     ? "Streamable HTTP"
                                     : t("mcp-servers:selectType")}
                               <ChevronDown className="ml-2 h-4 w-4" />
@@ -359,48 +359,48 @@ export default function McpServersPage() {
                   {/* SSE and STREAMABLE_HTTP specific fields */}
                   {(form.watch("type") === McpServerTypeEnum.Enum.SSE ||
                     form.watch("type") ===
-                      McpServerTypeEnum.Enum.STREAMABLE_HTTP) && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="url"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t("mcp-servers:url")}</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder={t("mcp-servers:urlPlaceholder")}
-                                type="url"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    McpServerTypeEnum.Enum.STREAMABLE_HTTP) && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="url"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t("mcp-servers:url")}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder={t("mcp-servers:urlPlaceholder")}
+                                  type="url"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={form.control}
-                        name="bearerToken"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              {t("mcp-servers:bearerToken")}
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder={t(
-                                  "mcp-servers:bearerTokenPlaceholder",
-                                )}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
+                        <FormField
+                          control={form.control}
+                          name="bearerToken"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {t("mcp-servers:bearerToken")}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder={t(
+                                    "mcp-servers:bearerTokenPlaceholder",
+                                  )}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </>
+                    )}
 
                   <div className="flex justify-end space-x-2">
                     <Button

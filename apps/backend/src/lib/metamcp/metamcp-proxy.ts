@@ -43,6 +43,7 @@ import {
 } from "./metamcp-middleware/tool-overrides.functional";
 import { parseToolName } from "./tool-name-parser";
 import { sanitizeName } from "./utils";
+import { createIPIDetectionMiddleware } from "./metamcp-middleware/ipi-detection.middleware";
 
 /**
  * Filter out tools that are overrides of existing tools to prevent duplicates in database
@@ -410,8 +411,7 @@ export const createServer = async (
       return result as CallToolResult;
     } catch (error) {
       console.error(
-        `Error calling tool "${name}" through ${
-          clientForTool.client.getServerVersion()?.name || "unknown"
+        `Error calling tool "${name}" through ${clientForTool.client.getServerVersion()?.name || "unknown"
         }:`,
         error,
       );
@@ -441,6 +441,7 @@ export const createServer = async (
     // Add more middleware here as needed
     // createAuditingMiddleware(),
     // createAuthorizationMiddleware(),
+    createIPIDetectionMiddleware({ enabled: true }),
   )(originalCallToolHandler);
 
   // Set up the handlers with middleware
@@ -484,8 +485,7 @@ export const createServer = async (
       return response;
     } catch (error) {
       console.error(
-        `Error getting prompt through ${
-          clientForPrompt.client.getServerVersion()?.name
+        `Error getting prompt through ${clientForPrompt.client.getServerVersion()?.name
         }:`,
         error,
       );
@@ -714,8 +714,7 @@ export const createServer = async (
       );
     } catch (error) {
       console.error(
-        `Error reading resource through ${
-          clientForResource.client.getServerVersion()?.name
+        `Error reading resource through ${clientForResource.client.getServerVersion()?.name
         }:`,
         error,
       );

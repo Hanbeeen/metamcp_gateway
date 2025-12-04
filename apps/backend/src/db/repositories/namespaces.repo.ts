@@ -256,7 +256,9 @@ export class NamespacesRepository {
         // Namespace mapping fields
         status: namespaceToolMappingsTable.status,
         overrideName: namespaceToolMappingsTable.override_name,
+        overrideTitle: namespaceToolMappingsTable.override_title,
         overrideDescription: namespaceToolMappingsTable.override_description,
+        overrideAnnotations: namespaceToolMappingsTable.override_annotations,
       })
       .from(toolsTable)
       .innerJoin(

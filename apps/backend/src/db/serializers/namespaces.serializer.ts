@@ -66,7 +66,9 @@ export class NamespacesSerializer {
       serverName: dbTool.serverName,
       serverUuid: dbTool.serverUuid,
       overrideName: dbTool.overrideName,
+      overrideTitle: dbTool.overrideTitle,
       overrideDescription: dbTool.overrideDescription,
+      overrideAnnotations: dbTool.overrideAnnotations,
     };
   }
 

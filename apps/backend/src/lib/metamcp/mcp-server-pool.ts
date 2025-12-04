@@ -556,6 +556,15 @@ export class McpServerPool {
   }
 
   /**
+   * Invalidate all sessions (idle and active) for a specific server
+   * This is used when server configuration changes and we need to force a restart
+   */
+  async invalidateServerSessions(serverUuid: string): Promise<void> {
+    console.log(`Invalidating all sessions for server ${serverUuid}`);
+    await this.cleanupServerSessions(serverUuid);
+  }
+
+  /**
    * Check if a server is in error state
    */
   async isServerInErrorState(serverUuid: string): Promise<boolean> {
@@ -591,12 +600,12 @@ export class McpServerPool {
   private async cleanupExpiredSessions(): Promise<void> {
     try {
       const sessionLifetime = await configService.getSessionLifetime();
-      
+
       // If session lifetime is null, sessions are infinite - skip cleanup
       if (sessionLifetime === null) {
         return;
       }
-      
+
       const now = Date.now();
       const expiredSessionIds: string[] = [];
 

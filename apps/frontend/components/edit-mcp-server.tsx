@@ -211,9 +211,9 @@ export function EditMcpServer({
       // Parse args string into array by splitting on spaces
       const argsArray = data.args
         ? data.args
-            .trim()
-            .split(/\s+/)
-            .filter((arg) => arg.length > 0)
+          .trim()
+          .split(/\s+/)
+          .filter((arg) => arg.length > 0)
         : [];
 
       // Parse env string into object
@@ -354,7 +354,7 @@ export function EditMcpServer({
                     : editForm.watch("type") === McpServerTypeEnum.Enum.SSE
                       ? t("mcp-servers:sse")
                       : editForm.watch("type") ===
-                          McpServerTypeEnum.Enum.STREAMABLE_HTTP
+                        McpServerTypeEnum.Enum.STREAMABLE_HTTP
                         ? "Streamable HTTP"
                         : t("mcp-servers:selectType")}
                   <ChevronDown className="h-4 w-4" />
@@ -440,40 +440,40 @@ export function EditMcpServer({
 
           {(editForm.watch("type") === McpServerTypeEnum.Enum.SSE ||
             editForm.watch("type") ===
-              McpServerTypeEnum.Enum.STREAMABLE_HTTP) && (
-            <>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="edit-url" className="text-sm font-medium">
-                  {t("mcp-servers:url")}
-                </label>
-                <Input
-                  id="edit-url"
-                  {...editForm.register("url")}
-                  placeholder={t("mcp-servers:urlPlaceholder")}
-                />
-                {editForm.formState.errors.url && (
-                  <p className="text-sm text-red-500">
-                    {editForm.formState.errors.url.message}
-                  </p>
-                )}
-              </div>
+            McpServerTypeEnum.Enum.STREAMABLE_HTTP) && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="edit-url" className="text-sm font-medium">
+                    {t("mcp-servers:url")}
+                  </label>
+                  <Input
+                    id="edit-url"
+                    {...editForm.register("url")}
+                    placeholder={t("mcp-servers:urlPlaceholder")}
+                  />
+                  {editForm.formState.errors.url && (
+                    <p className="text-sm text-red-500">
+                      {editForm.formState.errors.url.message}
+                    </p>
+                  )}
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="edit-bearerToken"
-                  className="text-sm font-medium"
-                >
-                  {t("mcp-servers:bearerToken")}
-                </label>
-                <Input
-                  id="edit-bearerToken"
-                  {...editForm.register("bearerToken")}
-                  placeholder={t("mcp-servers:bearerTokenPlaceholder")}
-                  type="password"
-                />
-              </div>
-            </>
-          )}
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="edit-bearerToken"
+                    className="text-sm font-medium"
+                  >
+                    {t("mcp-servers:bearerToken")}
+                  </label>
+                  <Input
+                    id="edit-bearerToken"
+                    {...editForm.register("bearerToken")}
+                    placeholder={t("mcp-servers:bearerTokenPlaceholder")}
+                    type="password"
+                  />
+                </div>
+              </>
+            )}
 
           <div className="flex justify-end space-x-2">
             <Button

@@ -7,6 +7,6 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     // @ts-expect-error outside dir
-    url: process.env.DATABASE_URL!,
+    url: process.env.INTERNAL_DATABASE_URL || process.env.DATABASE_URL!,
   },
 });

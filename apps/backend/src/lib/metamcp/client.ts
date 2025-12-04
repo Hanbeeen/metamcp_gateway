@@ -46,6 +46,15 @@ export const createMetaMcpClient = (
       ? resolveEnvVariables(serverParams.env)
       : undefined;
 
+    if (resolvedEnv && resolvedEnv.NOTION_API_KEY) {
+      console.log(`[DEBUG] NOTION_API_KEY length: ${resolvedEnv.NOTION_API_KEY.length}`);
+      console.log(`[DEBUG] NOTION_API_KEY starts with: ${resolvedEnv.NOTION_API_KEY.substring(0, 5)}...`);
+      console.log(`[DEBUG] NOTION_API_KEY ends with: ...${resolvedEnv.NOTION_API_KEY.substring(resolvedEnv.NOTION_API_KEY.length - 5)}`);
+      console.log(`[DEBUG] NOTION_API_KEY is trimmed: ${resolvedEnv.NOTION_API_KEY === resolvedEnv.NOTION_API_KEY.trim()}`);
+    } else {
+      console.log("[DEBUG] NOTION_API_KEY not found in resolvedEnv");
+    }
+
     const stdioParams: StdioServerParameters = {
       command: serverParams.command || "",
       args: serverParams.args || undefined,

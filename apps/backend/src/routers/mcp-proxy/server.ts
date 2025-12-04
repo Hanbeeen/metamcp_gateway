@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 
 import {
   SSEClientTransport,
@@ -96,9 +97,21 @@ const extractServerUuidFromStdioCommand = async (
         console.log(
           `Checking server ${server.name} (${server.uuid}): ${serverCommand}`,
         );
+
+        // Check exact match
         if (serverCommand === fullCommand) {
           console.log(
             `Found exact match for server ${server.name} (${server.uuid})`,
+          );
+          return server.uuid;
+        }
+
+        // Check match with basename of the command (handle absolute paths)
+        const commandBase = path.basename(command);
+        const fullCommandBase = `${commandBase} ${args.join(" ")}`;
+        if (serverCommand === fullCommandBase) {
+          console.log(
+            `Found basename match for server ${server.name} (${server.uuid})`,
           );
           return server.uuid;
         }
