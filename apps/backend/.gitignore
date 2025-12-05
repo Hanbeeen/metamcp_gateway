@@ -9,4 +9,5 @@ yarn-error.log*
 .env.production.local
 *.log
 dist/
-*.tsbuildinfo 
+*.tsbuildinfo
+data/

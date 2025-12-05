@@ -54,6 +54,8 @@
     "dotenv-cli": "^8.0.0",
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.28.0",
+    "hyparquet": "^1.22.1",
+    "hyparquet-compressors": "^1.1.1",
     "tsup": "^8.5.0",
     "tsx": "^4.20.3",
     "typescript": "^5.0.0"
