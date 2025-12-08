@@ -1,72 +1,112 @@
-# 변경 사항 로그 (Comprehensive Changelog)
+# 통합 변경 사항 로그 (Integrated Changelog)
 
-이 문서는 프로젝트 진행 과정에서 수정하거나 추가된 **모든 파일과 로직**을 상세하게 기록한 문서입니다.
+이 문서는 프로젝트의 전체 변경 사항을 **PR 병합으로 추가된 기능**과 **사용자(Developer)가 직접 수정한 내역**으로 구분하여 정리했습니다.
 
-## 1. 백엔드 (Backend)
+## 1. 🚀 PR #1 병합으로 추가된 기능 (Feat: hnsw index filtering)
+*이 내용은 GitHub PR #1에서 병합된 새로운 기능들입니다.*
 
-### 🛠️ 핵심 로직 및 유틸리티 (Core Logic & Utils)
+### 핵심 기능: 실제 IPI 감지 (HNSW Vector Store)
+- **`apps/backend/src/lib/ipi/vector-store.ts`**
+    - HNSW(Hierarchical Navigable Small World) 알고리즘을 사용한 로컬 벡터 저장소 구현.
+    - 코사인 유사도 기반의 위험도 검색(`searchRisk`) 기능 제공.
+- **`apps/backend/src/lib/ipi/embedder.ts`**
+    - HuggingFace Transformers(`all-MiniLM-L6-v2`)를 사용한 텍스트 임베딩 생성기.
+- **`apps/backend/src/lib/ipi/hnsw-store.ts`**
+    - (PR 내 포함된 HNSW 관련 유틸리티)
+
+### 실행 스크립트
+- **`apps/backend/scripts/build-index.ts`**
+    - 초기 벡터 인덱스 생성을 위한 스크립트.
+- **`apps/backend/scripts/verify-ipi-node.ts`**
+    - IPI 감지 기능 검증 스크립트.
+
+### 의존성 추가
+- `@huggingface/transformers`: 로컬 임베딩 처리.
+- `hnswlib-node`: 고성능 벡터 검색 라이브러리.- `hnswlib-node`: 고성능 벡터 검색 라이브러리.
+
+
+## 2. 🧠 하이브리드 IPI 탐지 시스템 (Hybrid IPI Detection)
+*기존 Vector 기반 탐지에 LLM 검증을 더해 정확도를 획기적으로 개선했습니다.*
+
+### 🛠️ 하이브리드 탐지 로직 (Logic)
+- **Vector Search (1차):** 기존 HNSW 인덱스를 사용해 코사인 유사도 검색 수행.
+- **LLM Verification (2차):**
+    - 유사도 점수가 **애매한 구간 (0.5 ~ 0.82)**일 때만 **OpenAI `gpt-5-mini`** API를 호출.
+    - `gpt-4o` 대비 더 가볍지만, IPI 분석에 필수적인 **추론 능력(Reasoning)**을 갖춘 최적의 모델 선정.
+    - 확실한 공격(> 0.82)이나 안전한 건에 대해서는 LLM 호출을 생략.
+
+### ✨ 기능 추가 (Features)
+- **`IPILLMVerifier` Class:** OpenAI API 연동을 담당하는 클래스 구현 (`apps/backend/src/lib/ipi/llm-verifier.ts`).
+- **AI Analysis Report:** LLM이 분석한 상세 리포트를 프론트엔드 UI에 표시.
+- **상태 동기화:** `analysisReport` 필드를 `IPIDecision` 스키마에 추가하여 저장 및 조회 가능.
+
+### 🧹 스크립트 디렉토리 정리 (Cleanup)
+- 파편화되어 있던 `src/scripts` 디렉토리를 **`apps/backend/scripts/`**로 통합.
+- `debug-notion-token.ts`, `fix-notion-env-var.ts` 이전 및 경로 수정 완료.
+
+---
+*이 내용은 IPI 탐지 시스템의 기반이 된 초기 커밋(9c720e6)의 상세 분석입니다.*
+
+### 핵심 구현 로직
+- **미들웨어 (Middleware):** `ipi-detection.middleware.ts`를 통해 MCP 도구 실행 결과를 가로채는 파이프라인 구축. (초기에는 문자열 매칭 방식)
+- **상태 관리 (Store):** `ipi-decision-store.ts`를 통해 탐지된 위협과 사용자 결정(Pending/Block/Allow)을 메모리 상에서 관리.
+- **프록시 연결:** `metamcp-proxy.ts`에 미들웨어를 등록하여 모든 툴 실행 시 검사가 수행되도록 연결.
+
+### 프론트엔드 및 UI
+- **탐지 대시보드:** `apps/frontend/app/[locale]/(sidebar)/ipi-detection/page.tsx` 구현.
+- **관리자 액션:** 위협 발생 시 차단(Block), 마스킹(Mask), 허용(Allow)을 선택할 수 있는 UI 제공.
+
+### API (tRPC)
+- **`packages/trpc/src/routers/frontend/ipi.ts`**: 프론트엔드와 통신하기 위한 API 정의 (getPending, resolve, getHistory).
+- **`apps/backend/src/trpc/ipi.impl.ts`**: 실제 백엔드 로직 구현체.
+
+### 문서화
+- `CHANGELOG.md`, `MASTER_GUIDE.md` 등 프로젝트 문서화의 시작점이 됨.
+
+---
+
+
+## 4. 🛠️ 사용자(Developer)가 직접 수정한 내역
+*이 내용은 디버깅 및 안정화를 위해 직접 추가하거나 수정한 내역입니다.*
+
+### 백엔드 (Backend) - 디버깅 및 안정화
+#### 1. 인증 및 환경 변수 (Auth & Env)
 - **`apps/backend/src/lib/metamcp/utils.ts`**
-    - **변경 내용:** `resolveEnvVariables` 함수 개선.
-    - **상세:** 환경 변수 값의 앞뒤 공백을 자동으로 제거(`trim`)하는 로직을 추가하여, `.env` 파일이나 DB에 저장된 키 값에 실수로 포함된 공백으로 인한 인증 오류를 방지했습니다.
-
+    - `resolveEnvVariables`: 환경 변수 값의 공백(`trim`) 자동 제거 로직 추가.
 - **`apps/backend/src/lib/metamcp/client.ts`**
-    - **변경 내용:** 프로세스 실행 전 디버그 로그 추가.
-    - **상세:** `createMetaMcpClient` 함수 내에 `NOTION_API_KEY` 등의 환경 변수가 실제 프로세스로 전달되기 직전의 상태(길이, 공백 여부 등)를 출력하는 로그를 추가하여 디버깅을 용이하게 했습니다.
+    - 환경 변수 조달 시점의 상태 확인을 위한 디버그 로그 추가.
 
-- **`apps/backend/src/routers/mcp-proxy/server.ts`**
-    - **변경 내용:** `extractServerUuidFromStdioCommand` 함수 매칭 로직 개선.
-    - **상세:** 기존에는 명령어의 절대 경로가 정확히 일치해야만 서버를 찾을 수 있었으나, 실행 파일명(basename)만으로도 매칭되도록 수정하여 개발/배포 환경 간 경로 차이로 인한 "No server found" 오류를 해결했습니다.
-
-### 🌐 라우터 및 API (Routers & API)
-- **`apps/backend/src/routers/public-metamcp/sse.ts`**
-    - **변경 내용:** `POST /:endpoint_name/sse` 엔드포인트 핸들러 추가.
-    - **상세:** Cursor 등 일부 클라이언트가 SSE 연결을 위해 `POST` 요청을 보낼 경우 404 오류가 발생하던 문제를 해결하기 위해, 405 Method Not Allowed 응답과 함께 "GET 요청을 사용하거나 /mcp 엔드포인트를 사용하라"는 명확한 가이드를 반환하도록 수정했습니다.
-
-### 🛡️ 미들웨어 (Middleware)
-- **`apps/backend/src/lib/metamcp/metamcp-middleware/ipi-detection.middleware.ts`**
-    - **변경 내용:** IPI(프롬프트 주입) 감지 로직 구현 및 검증.
-    - **상세:** 툴 실행 결과에 "ATTACK"이나 "SECRET"과 같은 민감한 키워드가 포함되어 있는지 검사하고, 감지 시 `ipiDecisionStore`를 통해 차단(Block), 마스킹(Mask), 허용(Allow) 등의 조치를 취할 수 있는 모의(Mock) 로직을 통합했습니다.
-
-### 🗄️ 데이터베이스 및 설정 (Database & Config)
+#### 2. 데이터베이스 및 네트워크 (DB & Network)
 - **`apps/backend/src/db/index.ts`**
-    - **변경 내용:** DB 연결 문자열 우선순위 로직 변경.
-    - **상세:** `INTERNAL_DATABASE_URL` 환경 변수가 존재할 경우 `DATABASE_URL`보다 우선적으로 사용하도록 수정하여, Docker 컨테이너 내부에서 호스트의 `.env` 설정(localhost)에 영향받지 않고 내부 네트워크 주소로 연결되도록 보장했습니다. 또한 연결 주소를 마스킹하여 로그에 출력하는 기능을 추가했습니다.
-
+    - **중요:** `INTERNAL_DATABASE_URL` 우선 사용 로직 추가 (Docker 내부 통신 고정).
+    - 연결 문자열 마스킹 로그 추가.
 - **`apps/backend/drizzle.config.ts`**
-    - **변경 내용:** 마이그레이션 설정 수정.
-    - **상세:** `drizzle-kit` 실행 시에도 `INTERNAL_DATABASE_URL`을 우선 사용하도록 설정하여, 마이그레이션 도구가 올바른 DB를 타겟팅하도록 했습니다.
-
-### 📜 스크립트 (Scripts - New)
-- **`apps/backend/src/scripts/debug-notion-token.ts`** (신규)
-    - **내용:** DB에 저장된 Notion 서버 설정 조회 스크립트.
-    - **상세:** `mcp_servers` 테이블과 `oauth_sessions` 테이블을 조회하여 Notion 관련 API 키나 토큰이 실제로 어떻게 저장되어 있는지(공백 포함 여부, 키 이름 등)를 검사합니다.
-
-- **`apps/backend/src/scripts/fix-notion-env-var.ts`** (신규)
-    - **내용:** Notion 환경 변수 이름 자동 수정 스크립트.
-    - **상세:** 사용자가 `API_KEY`라는 이름으로 잘못 저장한 환경 변수를 감지하여, Notion MCP 서버가 인식할 수 있는 `NOTION_API_KEY`와 `NOTION_TOKEN`으로 이름을 변경하고 값을 복사해 주는 마이그레이션 스크립트입니다.
-
-## 2. 프론트엔드 (Frontend)
-
-### 🔐 인증 및 세션 (Auth & Session)
-- **`apps/frontend/lib/oauth-provider.ts`**
-    - **변경 내용:** SSR(Server-Side Rendering) 호환성 수정.
-    - **상세:** `sessionStorage`는 브라우저 전용 API이므로 서버에서 실행될 때 `ReferenceError`가 발생하지 않도록 `typeof window !== 'undefined'` 조건문을 추가하여 감쌌습니다.
-
-### 🖥️ UI 컴포넌트 (UI Components)
-- **`apps/frontend/app/[locale]/(sidebar)/ipi-detection/page.tsx`** (신규/수정)
-    - **내용:** IPI 감지 로그 및 관리 페이지.
-    - **상세:** 감지된 IPI 로그 목록을 보여주고, 각 항목에 대해 차단/마스킹/허용 조치를 취할 수 있는 관리자 인터페이스를 구현했습니다.
-
-- **`apps/frontend/components/edit-mcp-server.tsx`** (수정)
-    - **내용:** 서버 설정 UI 개선.
-    - **상세:** (문맥상) IPI 감지 기능 활성화 여부나 관련 설정을 할 수 있는 UI 요소가 추가/수정되었습니다.
-
-## 3. 인프라 및 배포 설정 (Infrastructure)
-
+    - 마이그레이션 실행 시 내부 DB 주소 우선 사용 설정.
 - **`docker-compose.yml`**
-    - **변경 내용:** `app` 서비스 네트워크 설정 강화.
-    - **상세:** `INTERNAL_DATABASE_URL` 환경 변수를 추가하고 `POSTGRES_HOST`를 `postgres`로 하드코딩하여, 백엔드 컨테이너가 호스트의 로컬 설정과 무관하게 항상 Docker 내부 네트워크를 통해 DB에 접속하도록 강제했습니다.
-
+    - `INTERNAL_DATABASE_URL` 환경 변수 주입 및 `app` 서비스의 DB 연결 호스트 고정.
 - **`docker-entrypoint-dev.sh`**
-    - **변경 내용:** 마이그레이션 실행 전 환경 변수 강제 설정.
-    - **상세:** `drizzle-kit migrate` 명령어를 실행하기 직전에 `export DATABASE_URL=...`을 통해 내부 DB 주소를 명시적으로 선언함으로써, `drizzle-kit`이 `.env` 파일을 로드하여 설정을 덮어쓰는 문제를 원천 차단했습니다.
+    - 마이그레이션(`drizzle-kit`) 실행 직전 `DATABASE_URL` 강제 export 로직 추가 (연결 오류 `ECONNREFUSED` 해결).
+
+#### 3. API 및 서버 (API & Server)
+- **`apps/backend/src/routers/public-metamcp/sse.ts`**
+    - `POST /:endpoint_name/sse` 핸들러 추가 (Cursor 연결 404/405 오류 방지).
+- **`apps/backend/src/routers/mcp-proxy/server.ts`**
+    - 명령어 실행 파일명 매칭(basename) 로직 개선 (경로 불일치 오류 해결).
+- **`apps/backend/src/lib/ipi/middleware.ts`**
+    - **통합:** 기존 Mock 로직을 제거하고, PR #1의 `VectorStore`와 `LocalEmbeddingService`를 사용하도록 연결.
+
+#### 4. 유틸리티 스크립트 (Scripts)
+*위치는 `apps/backend/scripts/`로 통합됨*
+- **`debug-notion-token.ts`**: Notion 인증 정보(공백 등) DB 조회용.
+- **`fix-notion-env-var.ts`**: Notion 환경 변수명(`API_KEY` -> `NOTION_API_KEY`) 자동 보정용.
+
+#### 5. 파일 정리 및 리팩토링 (Cleanup)
+- **문서 통합:** 파편화된 가이드(`RUN_GUIDE_IPI.md`, `CURSOR_CONNECT_GUIDE.md`)를 삭제하고 **`MASTER_GUIDE.md`**로 통합.
+- **코드 정리:** 사용하지 않는 프론트엔드 컴포넌트(`ipi-decision-modal.tsx`) 삭제.
+- **구조 개선:** IPI 관련 로직을 `apps/backend/src/lib/ipi/` 디렉토리로 이동하여 모듈화.
+
+### 프론트엔드 (Frontend) - 버그 수정 및 UI
+- **`apps/frontend/lib/oauth-provider.ts`**
+    - SSR 시 `sessionStorage` 접근 오류(`ReferenceError`) 수정.
+- **`apps/frontend/app/[locale]/(sidebar)/ipi-detection/page.tsx`**
+    - IPI 감지 로그 확인 및 관리자 액션(Block/Mask/Allow) UI 페이지 구현.

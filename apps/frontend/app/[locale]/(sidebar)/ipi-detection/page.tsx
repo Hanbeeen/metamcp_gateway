@@ -136,8 +136,8 @@ export default function IPIDetectionPage() {
                                         <TableRow
                                             key={decision.id}
                                             className={`cursor-pointer ${selectedDecision?.id === decision.id
-                                                    ? "bg-muted/50"
-                                                    : ""
+                                                ? "bg-muted/50"
+                                                : ""
                                                 }`}
                                             onClick={() => setSelectedDecision(decision)}
                                         >
@@ -190,6 +190,17 @@ export default function IPIDetectionPage() {
                                         </p>
                                     </div>
                                 </div>
+
+                                {selectedDecision.analysisReport && (
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-medium flex items-center gap-2">
+                                            <span className="text-primary">✨</span> AI Analysis Report
+                                        </h3>
+                                        <div className="p-4 rounded-md bg-primary/5 text-sm whitespace-pre-wrap border border-primary/20">
+                                            {selectedDecision.analysisReport}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <h3 className="text-sm font-medium">Original Content</h3>

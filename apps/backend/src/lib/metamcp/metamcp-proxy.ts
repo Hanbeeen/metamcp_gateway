@@ -43,7 +43,7 @@ import {
 } from "./metamcp-middleware/tool-overrides.functional";
 import { parseToolName } from "./tool-name-parser";
 import { sanitizeName } from "./utils";
-import { createIPIDetectionMiddleware } from "./metamcp-middleware/ipi-detection.middleware";
+import { createIPIDetectionMiddleware } from "../ipi/middleware";
 
 /**
  * Filter out tools that are overrides of existing tools to prevent duplicates in database

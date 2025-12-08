@@ -14,6 +14,7 @@ export const IPIDecisionSchema = z.object({
     status: IPIDecisionStatusSchema,
     timestamp: z.number(),
     detectedThreat: z.string().optional(),
+    analysisReport: z.string().optional(),
 });
 
 export type IPIDecision = z.infer<typeof IPIDecisionSchema>;

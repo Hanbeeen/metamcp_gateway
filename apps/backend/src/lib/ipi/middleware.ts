@@ -2,25 +2,73 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
     CallToolMiddleware,
     MetaMCPHandlerContext,
-} from "../functional-middleware";
-import { ipiDecisionStore } from "../../ipi-decision-store";
+} from "../metamcp/metamcp-middleware/functional-middleware";
+import { ipiDecisionStore } from "./decision-store";
+
+import { VectorStore } from "./vector-store";
+import { LocalEmbeddingService } from "./embedder";
 
 /**
- * Mock detection function
- * In a real scenario, this would call the external detection server.
+ * Real detection using HNSW Vector Store
+ */
+import { IPILLMVerifier } from "./llm-verifier";
+
+/**
+ * Real detection using Hybrid Approach (HNSW Vector Store + LLM Verification)
  */
 async function detectIPI(
     toolName: string,
     result: CallToolResult,
-): Promise<{ detected: boolean; reason?: string }> {
-    // Simple mock logic: Detect if the result contains "ATTACK" or "SECRET"
-    const contentStr = JSON.stringify(result.content);
-    if (contentStr.includes("ATTACK") || contentStr.includes("SECRET")) {
-        return {
-            detected: true,
-            reason: "Sensitive keyword detected (Mock IPI)",
-        };
+): Promise<{ detected: boolean; reason?: string; analysisReport?: string }> {
+    try {
+        const contentStr = JSON.stringify(result.content);
+
+        // 1. Convert content to embedding
+        const embedder = LocalEmbeddingService.getInstance();
+        const vector = await embedder.getEmbedding(contentStr);
+
+        // 2. Search in Vector Store
+        const vectorStore = VectorStore.getInstance();
+        const riskResult = await vectorStore.searchRisk([vector]);
+
+        // Hybrid Thresholds
+        const HIGH_RISK_THRESHOLD = 0.82;
+        const AMBIGUOUS_THRESHOLD = 0.5;
+
+        // Case A: High Confidence Attack (Vector Score > 0.82)
+        if (riskResult.score > HIGH_RISK_THRESHOLD) {
+            return {
+                detected: true,
+                reason: `High confidence vector match (Score: ${riskResult.score.toFixed(2)}): ${riskResult.reason}`,
+                analysisReport: "Detected by High-Confidence Vector Similarity Search.",
+            };
+        }
+
+        // Case B: Ambiguous / Suspicious (0.5 <= Score <= 0.82)
+        // Verify with LLM to reduce false positives/negatives
+        if (riskResult.score >= AMBIGUOUS_THRESHOLD) {
+            console.log(`[IPI Middleware] Ambiguous risk score (${riskResult.score.toFixed(2)}). Verifying with LLM...`);
+            const llmVerifier = IPILLMVerifier.getInstance();
+            const verification = await llmVerifier.verifyContent(contentStr);
+
+            if (verification.isAttack) {
+                return {
+                    detected: true,
+                    reason: `LLM Verified Threat (Vector Score: ${riskResult.score.toFixed(2)}): ${verification.reason}`,
+                    analysisReport: verification.report,
+                };
+            } else {
+                console.log(`[IPI Middleware] LLM cleared the content (Reason: ${verification.reason})`);
+            }
+        }
+
+        // Case C: Safe (Score < 0.5) OR LLM said safe
+        return { detected: false };
+
+    } catch (error) {
+        console.error("[IPI Middleware] Detection failed:", error);
     }
+
     return { detected: false };
 }
 
@@ -55,6 +103,7 @@ export function createIPIDetectionMiddleware(options: {
                         request.params.name,
                         result.content,
                         detection.reason,
+                        detection.analysisReport, // Pass the report
                     );
 
                     console.log(

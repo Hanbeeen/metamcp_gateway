@@ -38,4 +38,6 @@ yarn-error.log*
 *.pem
 
 .cursor/
-.vscode/
+
+# IPI Data
+apps/backend/data/ipi/

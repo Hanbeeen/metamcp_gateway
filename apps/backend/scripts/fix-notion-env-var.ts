@@ -1,6 +1,6 @@
 
-import { db } from "../db";
-import { mcpServersTable } from "../db/schema";
+import { db } from "../src/db";
+import { mcpServersTable } from "../src/db/schema";
 import { eq, sql } from "drizzle-orm";
 
 async function main() {

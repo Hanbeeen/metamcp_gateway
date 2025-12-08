@@ -1,4 +1,4 @@
-import { ipiDecisionStore } from "../lib/ipi-decision-store";
+import { ipiDecisionStore } from "../lib/ipi/decision-store";
 
 export const ipiImplementations = {
     getPending: async () => {

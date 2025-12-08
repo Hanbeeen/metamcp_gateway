@@ -1,6 +1,6 @@
 
-import { db } from "../db";
-import { mcpServersTable, oauthSessionsTable } from "../db/schema";
+import { db } from "../src/db";
+import { mcpServersTable, oauthSessionsTable } from "../src/db/schema";
 import { eq } from "drizzle-orm";
 
 async function main() {

@@ -9,6 +9,7 @@ export interface IPIDecision {
   status: IPIDecisionStatus;
   timestamp: number;
   detectedThreat?: string; // e.g., "Prompt Injection Detected"
+  analysisReport?: string;
 }
 
 class IPIDecisionStore {
@@ -19,7 +20,8 @@ class IPIDecisionStore {
   addDecision(
     toolName: string,
     content: any,
-    detectedThreat: string = "Potential Security Risk",
+    detectedThreat: string = "Unknown Threat",
+    analysisReport?: string,
   ): Promise<IPIDecision> {
     const id = uuidv4();
     const decision: IPIDecision = {
@@ -29,6 +31,7 @@ class IPIDecisionStore {
       status: "pending",
       timestamp: Date.now(),
       detectedThreat,
+      analysisReport,
     };
 
     this.decisions.set(id, decision);
