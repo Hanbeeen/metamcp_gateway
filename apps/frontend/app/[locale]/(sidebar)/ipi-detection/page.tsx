@@ -197,13 +197,67 @@ export default function IPIDetectionPage() {
                                 </div>
 
                                 {selectedDecision.analysisReport && (
-                                    <div className="space-y-2">
+                                    <div className="space-y-4">
                                         <h3 className="text-sm font-medium flex items-center gap-2">
                                             <span className="text-primary">✨</span> AI Analysis Report
                                         </h3>
-                                        <div className="p-4 rounded-md bg-primary/5 text-sm whitespace-pre-wrap border border-primary/20">
-                                            {selectedDecision.analysisReport}
-                                        </div>
+
+                                        {/* JSON 리포트 파싱 및 렌더링 */}
+                                        {(() => {
+                                            try {
+                                                const report = JSON.parse(selectedDecision.analysisReport);
+                                                return (
+                                                    <div className="space-y-3 p-4 rounded-md bg-primary/5 border border-primary/10">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex gap-2 items-center">
+                                                                <span className="text-xs font-semibold uppercase text-muted-foreground">Type:</span>
+                                                                <Badge variant={report.isAttack ? "destructive" : "outline"}>
+                                                                    {report.threatType || "Unknown"}
+                                                                </Badge>
+                                                            </div>
+                                                            <div className="flex gap-2 items-center">
+                                                                <span className="text-xs font-semibold uppercase text-muted-foreground">Confidence:</span>
+                                                                <span className={`text-xs font-bold ${report.confidence > 0.8 ? "text-red-500" : "text-yellow-500"}`}>
+                                                                    {(report.confidence * 100).toFixed(0)}%
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="text-sm">
+                                                            <span className="font-semibold block mb-1 text-xs uppercase text-muted-foreground">Reasoning:</span>
+                                                            <p className="leading-relaxed">{report.reasoning || report.reason}</p>
+                                                        </div>
+
+                                                        {report.highlightedSnippets && report.highlightedSnippets.length > 0 && (
+                                                            <div>
+                                                                <span className="font-semibold block mb-1 text-xs uppercase text-muted-foreground">Suspicious Snippets:</span>
+                                                                <div className="space-y-1">
+                                                                    {report.highlightedSnippets.map((snippet: string, idx: number) => (
+                                                                        <div key={idx} className="bg-background/50 p-2 rounded text-xs font-mono border text-destructive break-all">
+                                                                            "{snippet}"
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {report.suggestedAction && (
+                                                            <div className="pt-2 border-t border-primary/10 flex justify-between items-center">
+                                                                <span className="text-xs font-semibold uppercase text-muted-foreground">AI Suggestion:</span>
+                                                                <Badge variant="outline" className="uppercase">{report.suggestedAction}</Badge>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            } catch (e) {
+                                                // 레거시 텍스트 리포트 처리
+                                                return (
+                                                    <div className="p-4 rounded-md bg-primary/5 text-sm whitespace-pre-wrap border border-primary/20">
+                                                        {selectedDecision.analysisReport}
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
                                     </div>
                                 )}
 

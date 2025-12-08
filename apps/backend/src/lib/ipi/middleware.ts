@@ -11,6 +11,61 @@ import { LocalEmbeddingService } from "./embedder";
 import { IPILLMVerifier } from "./llm-verifier";
 
 /**
+ * 재귀적으로 객체를 순회하며 IPI 탐지에 유의미한 텍스트만 추출합니다.
+ * Notion, Slack 등 다양한 MCP 툴의 응답 구조(content, text, body 등)를 커버합니다.
+ * 
+ * @param obj - 분석할 객체
+ * @param depth - 현재 재귀 깊이 (Internal use)
+ * @param maxDepth - 최대 재귀 깊이 (Stack Overflow 방지, 기본 5)
+ * @param maxLength - 최대 추출 텍스트 길이 (Token Limit 방지, 기본 10000자)
+ */
+function extractRelevantContent(
+    obj: any,
+    depth: number = 0,
+    maxDepth: number = 5,
+    maxLength: number = 10000
+): string {
+    if (!obj) return "";
+    if (depth > maxDepth) return ""; // 깊이 제한 초과 시 중단
+
+    if (typeof obj === "string") return obj.substring(0, maxLength); // 문자열은 즉시 반환
+    if (typeof obj !== "object") return String(obj);
+
+    if (Array.isArray(obj)) {
+        let arrayResult = "";
+        for (const item of obj) {
+            if (arrayResult.length >= maxLength) break;
+            const extracted = extractRelevantContent(item, depth + 1, maxDepth, maxLength);
+            arrayResult += extracted + "\n";
+        }
+        return arrayResult.trim();
+    }
+
+    const TARGET_KEYS = ["content", "text", "body", "message", "summary", "description", "value", "markdown"];
+    let extracted = "";
+
+    for (const key in obj) {
+        if (extracted.length >= maxLength) break; // 길이 제한 도달 시 중단
+
+        // 1. 주요 키값 우선 추출
+        if (TARGET_KEYS.includes(key.toLowerCase())) {
+            const val = obj[key];
+            if (typeof val === "string") {
+                extracted += val + "\n";
+            } else if (typeof val === "object") {
+                extracted += extractRelevantContent(val, depth + 1, maxDepth, maxLength) + "\n";
+            }
+        }
+        // 2. 객체라면 깊이 탐색 (단, 시스템 메타데이터 등은 제외 가능)
+        else if (typeof obj[key] === "object") {
+            extracted += extractRelevantContent(obj[key], depth + 1, maxDepth, maxLength) + "\n";
+        }
+    }
+
+    return extracted.trim().substring(0, maxLength); // 최종 길이 안전장치
+}
+
+/**
  * 하이브리드 IPI 탐지 로직 (HNSW Vector Store + LLM Verification)
  * 
  * 1. 벡터 유사도 검색으로 빠르게 1차 필터링
@@ -21,7 +76,13 @@ async function detectIPI(
     result: CallToolResult,
 ): Promise<{ detected: boolean; reason?: string; analysisReport?: string }> {
     try {
-        const contentStr = JSON.stringify(result.content);
+        // 스마트 콘텐츠 추출: 불필요한 JSON 구조를 제거하고 알맹이 텍스트만 분석
+        let contentStr = extractRelevantContent(result.content);
+
+        // 추출된 텍스트가 너무 짧으면(예: 메타데이터만 가득한 경우) 원본 JSON 사용
+        if (contentStr.length < 10) {
+            contentStr = JSON.stringify(result.content);
+        }
 
         // 1. 콘텐츠를 임베딩 벡터로 변환
         const embedder = LocalEmbeddingService.getInstance();
@@ -40,7 +101,12 @@ async function detectIPI(
             return {
                 detected: true,
                 reason: `고신뢰도 벡터 탐지 (점수: ${riskResult.score.toFixed(2)}): ${riskResult.reason}`,
-                analysisReport: "높은 벡터 유사도로 인해 즉시 탐지되었습니다. (LLM 검증 생략)",
+                analysisReport: JSON.stringify({
+                    isAttack: true,
+                    confidence: riskResult.score,
+                    reasoning: "High similarity to known attack vector in database.",
+                    threatType: "known_pattern"
+                }, null, 2),
             };
         }
 
@@ -49,7 +115,8 @@ async function detectIPI(
         if (riskResult.score >= AMBIGUOUS_THRESHOLD) {
             console.log(`[IPI Middleware] 애매한 위험 점수 (${riskResult.score.toFixed(2)}). LLM 검증 시작...`);
             const llmVerifier = IPILLMVerifier.getInstance();
-            const verification = await llmVerifier.verifyContent(contentStr);
+            // 추출된 텍스트 컨텍스트를 전달
+            const verification = await llmVerifier.verifyContent(contentStr, `Tool: ${toolName}`);
 
             if (verification.isAttack) {
                 return {
