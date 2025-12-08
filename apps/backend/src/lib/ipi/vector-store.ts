@@ -195,15 +195,16 @@ export class VectorStore {
             // Top-N 평균 (오탐 방지)
             // 가장 높은 점수 상위 N개의 평균을 최종 점수로 사용
             chunkScores.sort((a, b) => b - a); // 내림차순 정렬
-            const topN = 5; // 상위 5개 사용 (사용자 수정 반영)
+            const topN = 10; // Top-10 
             const topScores = chunkScores.slice(0, topN);
 
-            const finalRisk = topScores.length > 0
-                ? topScores.reduce((a, b) => a + b, 0) / topScores.length
-                : 0.0;
+            let finalRisk = 0.0;
+            if (topScores.length > 0) {
+                finalRisk = topScores.reduce((a, b) => a + b, 0) / topScores.length;
+            }
 
             // 최종 위험도가 임계값을 넘으면 탐지로 간주
-            const isDetected = finalRisk > 0.82; // 임계값 (사용자 수정 반영)
+            const isDetected = finalRisk > 0.87;
 
             return {
                 detected: isDetected,

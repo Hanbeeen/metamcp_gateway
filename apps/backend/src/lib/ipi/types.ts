@@ -23,3 +23,18 @@ export interface IPIDetectionResult {
     /** 탐지 사유 (탐지된 경우에만 포함, 예: "High risk patterns: ...") */
     reason?: string;
 }
+
+export type IPIDecisionStatus = "pending" | "allowed" | "masked" | "blocked";
+
+/**
+ * IPI 결정 정보 인터페이스
+ */
+export interface IPIDecision {
+    id: string;
+    toolName: string;
+    content: any;
+    status: IPIDecisionStatus;
+    timestamp: number;
+    detectedThreat?: string; // 예: "Prompt Injection Detected"
+    analysisReport?: string; // AI 상세 분석 리포트
+}
