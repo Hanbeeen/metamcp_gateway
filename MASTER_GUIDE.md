@@ -39,7 +39,7 @@ graph TD
     
     Security -- "7a. Safe / Masked" --> Client
     Security -- "7b. Threat Detected" --> AdminUI["Admin Panel (Block/Mask)"]
-    AdminUI -.-> "User Decision" .- Security
+    AdminUI -. "User Decision" .-> Security
 
     subgraph "MetaMCP Environment"
         Gateway
