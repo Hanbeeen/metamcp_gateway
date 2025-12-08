@@ -2,21 +2,31 @@ import { v4 as uuidv4 } from "uuid";
 
 export type IPIDecisionStatus = "pending" | "allowed" | "masked" | "blocked";
 
+/**
+ * IPI 결정 정보 인터페이스
+ */
 export interface IPIDecision {
   id: string;
   toolName: string;
   content: any;
   status: IPIDecisionStatus;
   timestamp: number;
-  detectedThreat?: string; // e.g., "Prompt Injection Detected"
-  analysisReport?: string;
+  detectedThreat?: string; // 예: "Prompt Injection Detected"
+  analysisReport?: string; // AI 상세 분석 리포트
 }
 
+/**
+ * IPI 결정 저장소 (메모리 기반)
+ * 탐지된 위협에 대한 사용자 결정을 관리합니다.
+ */
 class IPIDecisionStore {
   private decisions: Map<string, IPIDecision> = new Map();
   private resolvers: Map<string, (decision: IPIDecision) => void> = new Map();
 
-  // Add a new pending decision and return a promise that resolves when the user makes a decision
+  /**
+   * 새로운 보류(pending) 결정을 추가하고, 사용자 조치를 기다리는 Promise를 반환합니다.
+   * (미들웨어는 이 함수가 반환될 때까지 실행을 멈추고 기다립니다.)
+   */
   addDecision(
     toolName: string,
     content: any,
@@ -41,26 +51,35 @@ class IPIDecisionStore {
     });
   }
 
-  // Get a specific decision by ID
+  /**
+   * ID로 특정 결정 조회
+   */
   getDecision(id: string): IPIDecision | undefined {
     return this.decisions.get(id);
   }
 
-  // Get all pending decisions
+  /**
+   * 보류 중인 모든 결정 조회
+   */
   getPendingDecisions(): IPIDecision[] {
     return Array.from(this.decisions.values())
       .filter((d) => d.status === "pending")
       .sort((a, b) => b.timestamp - a.timestamp);
   }
 
-  // Get all decisions (history)
+  /**
+   * 모든 결정 이력 조회 (최신순)
+   */
   getHistory(): IPIDecision[] {
     return Array.from(this.decisions.values()).sort(
       (a, b) => b.timestamp - a.timestamp,
     );
   }
 
-  // Resolve a decision (called by user via UI)
+  /**
+   * 결정 처리 (사용자 UI 액션)
+   * UI에서 허용/차단/마스킹을 선택하면 호출됩니다.
+   */
   resolveDecision(id: string, status: IPIDecisionStatus): boolean {
     const decision = this.decisions.get(id);
     const resolve = this.resolvers.get(id);
@@ -69,11 +88,9 @@ class IPIDecisionStore {
       decision.status = status;
       resolve(decision);
 
-      // Cleanup
+      // 정리 (Cleanup)
       this.resolvers.delete(id);
-      // Optional: Keep the decision in history or remove it? 
-      // For now, let's keep it in memory but we might want to clean it up later.
-      // this.decisions.delete(id); 
+      // 참고: 이력을 남기기 위해 decisions 맵에서는 삭제하지 않음.
 
       return true;
     }

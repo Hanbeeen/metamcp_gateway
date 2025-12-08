@@ -32,7 +32,7 @@ export default function IPIDetectionPage() {
         null,
     );
 
-    // Poll for history every 2 seconds to show real-time updates
+    // 실시간 업데이트를 위해 2초마다 이력 폴링
     const { data: history, isLoading } = trpc.frontend.ipi.getHistory.useQuery(
         undefined,
         {
@@ -42,16 +42,21 @@ export default function IPIDetectionPage() {
 
     const resolveMutation = trpc.frontend.ipi.resolve.useMutation({
         onSuccess: () => {
-            toast.success("Decision recorded");
+            toast.success("결정이 기록되었습니다.");
             utils.frontend.ipi.getHistory.invalidate();
             utils.frontend.ipi.getPending.invalidate();
             setSelectedDecision(null);
         },
         onError: (error) => {
-            toast.error("Failed to record decision: " + error.message);
+            toast.error("결정 기록 실패: " + error.message);
         },
     });
 
+    /**
+     * 사용자 결정 처리 함수
+     * @param id 결정 ID
+     * @param status 처리 상태 ('allowed' | 'masked' | 'blocked')
+     */
     const handleResolve = (
         id: string,
         status: "allowed" | "masked" | "blocked",
@@ -101,7 +106,7 @@ export default function IPIDetectionPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-                {/* List of Decisions */}
+                {/* 탐지 이력 목록 */}
                 <Card className="md:col-span-1 h-[calc(100vh-200px)] flex flex-col">
                     <CardHeader>
                         <CardTitle>Detection History</CardTitle>
@@ -156,7 +161,7 @@ export default function IPIDetectionPage() {
                     </CardContent>
                 </Card>
 
-                {/* Detail View */}
+                {/* 상세 보기 */}
                 <Card className="md:col-span-1 h-[calc(100vh-200px)] overflow-auto">
                     <CardHeader>
                         <CardTitle>Event Details</CardTitle>
