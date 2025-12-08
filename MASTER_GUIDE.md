@@ -28,16 +28,16 @@
 
 ```mermaid
 graph LR
-    Cursor[Cursor / Claude (Client)] -- SSE Connection --> Gateway[MetaMCP Gateway]
-    Gateway -- IPI Middleware --> Security{IPI Check}
-    Security -- "Safe" --> MCPServer[Notion MCP Server]
-    Security -- "Threat Detected" --> AdminUI[Admin Panel / Logs]
-    MCPServer -- API Request --> ExternalAPI[Notion API]
+    Cursor["Cursor / Claude (Client)"] -- SSE Connection --> Gateway["MetaMCP Gateway"]
+    Gateway -- IPI Middleware --> Security{"IPI Check"}
+    Security -- "Safe" --> MCPServer["Notion MCP Server"]
+    Security -- "Threat Detected" --> AdminUI["Admin Panel / Logs"]
+    MCPServer -- API Request --> ExternalAPI["Notion API"]
     
     subgraph "MetaMCP Docker Environment"
         Gateway
         MCPServer
-        PostgreSQL[(Database)]
+        PostgreSQL[("Database")]
     end
 ```
 
