@@ -27,17 +27,25 @@
 ### 🏗️ 시스템 구조 (System Architecture)
 
 ```mermaid
-graph LR
-    Cursor["Cursor / Claude (Client)"] -- SSE Connection --> Gateway["MetaMCP Gateway"]
-    Gateway -- IPI Middleware --> Security{"IPI Check"}
-    Security -- "Safe" --> MCPServer["Notion MCP Server"]
-    Security -- "Threat Detected" --> AdminUI["Admin Panel / Logs"]
-    MCPServer -- API Request --> ExternalAPI["Notion API"]
+graph TD
+    Client["Cursor / LLM (User)"] -- "1. Tool Request" --> Gateway["MetaMCP Gateway"]
+    Gateway -- "2. Forward" --> MCPServer["Notion MCP Server"]
+    MCPServer -- "3. API Call" --> ExternalAPI["Notion API"]
     
-    subgraph "MetaMCP Docker Environment"
+    ExternalAPI -- "4. Return Data (Potential Threat)" --> MCPServer
+    MCPServer -- "5. Tool Result" --> Gateway
+    
+    Gateway -- "6. Intercept & Analyze" --> Security{"IPI Middleware"}
+    
+    Security -- "7a. Safe / Masked" --> Client
+    Security -- "7b. Threat Detected" --> AdminUI["Admin Panel (Block/Mask)"]
+    AdminUI -.-> "User Decision" .- Security
+
+    subgraph "MetaMCP Environment"
         Gateway
         MCPServer
-        PostgreSQL[("Database")]
+        Security
+        AdminUI
     end
 ```
 
