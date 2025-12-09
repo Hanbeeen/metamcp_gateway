@@ -66,12 +66,39 @@ function extractRelevantContent(
 }
 
 /**
+ * Query용 Dense Sliding Window (숨겨진 공격 찾기)
+ * 텍스트를 중첩된 윈도우로 분할하여 컨텍스트를 보존하며 세밀하게 검사합니다.
+ */
+function chunkDenseWindow(text: string, windowSize: number = 15, step: number = 5): string[] {
+    if (!text) return [];
+
+    // 공백 기준 단어 분할
+    const words = text.split(/\s+/);
+
+    // 윈도우 크기보다 작으면 통째로 반환
+    if (words.length <= windowSize) return [text];
+
+    const chunks: string[] = [];
+
+    // 슬라이딩 윈도우
+    for (let i = 0; i < words.length; i += step) {
+        const chunk = words.slice(i, i + windowSize);
+        // 최소 3단어 이상일 때만 청크로 인정 (너무 짧은 노이즈 제거)
+        if (chunk.length >= 3) {
+            chunks.push(chunk.join(" "));
+        }
+    }
+
+    return chunks;
+}
+
+/**
  * 하이브리드 IPI 탐지 로직 (HNSW Vector Store + LLM Verification)
  * 
  * 1. 벡터 유사도 검색으로 빠르게 1차 필터링
  * 2. 애매한 구간(Ambiguous)인 경우 LLM(GPT-5-mini)으로 정밀 분석
  */
-async function detectIPI(
+export async function detectIPI(
     toolName: string,
     result: CallToolResult,
 ): Promise<{ detected: boolean; reason?: string; analysisReport?: string }> {
@@ -84,19 +111,38 @@ async function detectIPI(
             contentStr = JSON.stringify(result.content);
         }
 
-        // 1. 콘텐츠를 임베딩 벡터로 변환
-        const embedder = LocalEmbeddingService.getInstance();
-        const vector = await embedder.getEmbedding(contentStr);
+        // 1. 텍스트 분할 (Dense Window Chunking)
+        const chunks = chunkDenseWindow(contentStr);
 
-        // 2. 벡터 저장소에서 유사도 검색
+        // 2. 청크 임베딩 (Batch Processing)
+        const embedder = LocalEmbeddingService.getInstance();
+
+        let vectors: number[][];
+
+        if (chunks.length === 0) {
+            // 청크가 없으면(빈 텍스트 등) 바로 리턴
+            return { detected: false };
+        }
+
+        if (chunks.length === 1) {
+            const v = await embedder.getEmbedding(chunks[0]);
+            vectors = [v];
+        } else {
+            // 배치 임베딩
+            vectors = await embedder.getEmbeddings(chunks);
+        }
+
+        // 3. 벡터 저장소에서 유사도 검색 (Weighted Voting with Top-10 Average)
         const vectorStore = VectorStore.getInstance();
-        const riskResult = await vectorStore.searchRisk([vector]);
+        await vectorStore.initialize();
+        const riskResult = await vectorStore.searchRisk(vectors);
 
         // 하이브리드 임계값 설정
-        const HIGH_RISK_THRESHOLD = 0.82;
-        const AMBIGUOUS_THRESHOLD = 0.5;
+        // 0.55 ~ 0.87 LLM 호출 %대비 가장 높은 공격 탐지율을 보이는 수치.
+        const HIGH_RISK_THRESHOLD = 0.87;
+        const AMBIGUOUS_THRESHOLD = 0.55;
 
-        // Case A: 고신뢰도 공격 (Score > 0.82) - 즉시 차단
+        // Case A: 고신뢰도 공격 (Score > 0.87) - 즉시 차단
         if (riskResult.score > HIGH_RISK_THRESHOLD) {
             return {
                 detected: true,
@@ -110,7 +156,7 @@ async function detectIPI(
             };
         }
 
-        // Case B: 의심 단계 (0.5 <= Score <= 0.82) - LLM 교차 검증
+        // Case B: 의심 단계 (0.55 <= Score <= 0.87) - LLM 교차 검증
         // 오탐(False Positive)을 줄이기 위해 LLM에게 판단을 위임
         if (riskResult.score >= AMBIGUOUS_THRESHOLD) {
             console.log(`[IPI Middleware] 애매한 위험 점수 (${riskResult.score.toFixed(2)}). LLM 검증 시작...`);
@@ -129,7 +175,7 @@ async function detectIPI(
             }
         }
 
-        // Case C: 안전 (Score < 0.5) 또는 LLM이 안전하다고 판단
+        // Case C: 안전 (Score < 0.55) 또는 LLM이 안전하다고 판단
         return { detected: false };
 
     } catch (error) {

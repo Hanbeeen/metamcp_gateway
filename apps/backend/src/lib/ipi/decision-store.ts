@@ -1,19 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
+import { IPIDecision, IPIDecisionStatus } from "./types";
 
-export type IPIDecisionStatus = "pending" | "allowed" | "masked" | "blocked";
-
-/**
- * IPI 결정 정보 인터페이스
- */
-export interface IPIDecision {
-  id: string;
-  toolName: string;
-  content: any;
-  status: IPIDecisionStatus;
-  timestamp: number;
-  detectedThreat?: string; // 예: "Prompt Injection Detected"
-  analysisReport?: string; // AI 상세 분석 리포트
-}
 
 /**
  * IPI 결정 저장소 (메모리 기반)
