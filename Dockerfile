@@ -100,6 +100,8 @@ USER nextjs
 
 # Expose frontend port (Next.js)
 EXPOSE 12008
+# Expose backend port (Node API)
+EXPOSE 12009
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

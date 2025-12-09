@@ -7,6 +7,7 @@ services:
       - .env
     ports:
       - "12008:12008"
+      - "12009:12009"
     environment:
       # Postgres connection details
       # Postgres connection details
