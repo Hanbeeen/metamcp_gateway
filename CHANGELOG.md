@@ -44,6 +44,24 @@
 - 파편화되어 있던 `src/scripts` 디렉토리를 **`apps/backend/scripts/`**로 통합.
 - `debug-notion-token.ts`, `fix-notion-env-var.ts` 이전 및 경로 수정 완료.
 
+## 3. 🛡️ IPI 탐지 고도화 (Advanced IPI Detection)
+*교묘하게 숨겨진 공격 패턴을 찾아내기 위해 분석 로직을 강화했습니다.*
+
+### 🚀 정확도 개선 (Accuracy Improvements)
+- **Dense Sliding Window Chunking:**
+    - 긴 텍스트를 단순히 자르는 것이 아니라, 단어 단위로 **중첩(Overlap)**하여 세밀하게 쪼개서 분석합니다.
+    - 문맥이 끊기는 것을 방지하고, 텍스트 중간에 숨겨진 프롬프트 주입 공격을 효과적으로 찾아냅니다.
+- **Batch Embedding:**
+    - 쪼개진 여러 개의 텍스트 청크를 **배치(Batch)**로 묶어 한 번에 벡터로 변환합니다.
+- **Weighted Voting Algorithm:**
+    - 단순 평균이 아닌, 유사도가 높은 청크에 가중치를 더 주는 방식으로 위험 점수를 산출합니다.
+    - **Top-10** 청크의 위험도를 종합하여 오탐(False Positive)을 줄였습니다.
+
+### ⚙️ 임계값 최적화 (Threshold Tuning)
+- 데이터 분석 결과를 바탕으로 임계값을 조정했습니다.
+    - **High Risk:** 0.82 → **0.87** (더 확실한 것만 즉시 차단)
+    - **Ambiguous:** 0.50 → **0.55** (LLM 검증 구간 미세 조정)
+
 ---
 *이 내용은 IPI 탐지 시스템의 기반이 된 초기 커밋(9c720e6)의 상세 분석입니다.*
 
