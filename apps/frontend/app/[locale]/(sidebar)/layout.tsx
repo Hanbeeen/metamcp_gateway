@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogsStatusIndicator } from "@/components/logs-status-indicator";
-import { IPIDecisionModal } from "@/components/ipi-decision-modal";
+
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
