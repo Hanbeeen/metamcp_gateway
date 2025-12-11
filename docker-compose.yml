@@ -10,8 +10,9 @@ services:
     ports:
       - "12008:12008"
       - "12009:12009"
+    volumes:
+      - ./apps/backend/data:/app/apps/backend/data
     environment:
-      # Postgres connection details
       # Postgres connection details
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
