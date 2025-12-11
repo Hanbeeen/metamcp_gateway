@@ -69,7 +69,7 @@ function extractRelevantContent(
  * Query용 Dense Sliding Window (숨겨진 공격 찾기)
  * 텍스트를 중첩된 윈도우로 분할하여 컨텍스트를 보존하며 세밀하게 검사합니다.
  */
-function chunkDenseWindow(text: string, windowSize: number = 15, step: number = 5): string[] {
+export function chunkDenseWindow(text: string, windowSize: number = 15, step: number = 5): string[] {
     if (!text) return [];
 
     // 공백 기준 단어 분할
