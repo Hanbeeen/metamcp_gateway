@@ -162,7 +162,11 @@ export async function detectIPI(
             console.log(`[IPI Middleware] 애매한 위험 점수 (${riskResult.score.toFixed(2)}). LLM 검증 시작...`);
             const llmVerifier = IPILLMVerifier.getInstance();
             // 추출된 텍스트 컨텍스트를 전달
-            const verification = await llmVerifier.verifyContent(contentStr, `Tool: ${toolName}`);
+            const verification = await llmVerifier.verifyContent(
+                contentStr,
+                `Tool: ${toolName}`,
+                riskResult.score
+            );
 
             if (verification.isAttack) {
                 return {
