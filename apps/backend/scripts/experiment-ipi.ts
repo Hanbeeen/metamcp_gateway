@@ -37,10 +37,9 @@ interface ExperimentResult {
 }
 
 // 설정 (Configuration)
-// LLM Only 실험은 비용이 발생하므로 샘플 크기를 작게 제한합니다.
+// 사용자 요청: 공격 500개 + 정상 500개 (총 1000개)를 모든 실험에 동일하게 적용
 const DATA_PATH = "data/ipi/final_db.parquet";
-const LLM_SAMPLE_SIZE = 20; // 공격 10개 + 정상 10개
-const TOTAL_SAMPLE_SIZE = 100; // 공격 50개 + 정상 50개 (Vector/Hybrid 용)
+const TOTAL_SAMPLE_SIZE = 1000; // 공격 500개 + 정상 500개
 
 async function loadData(limit: number): Promise<ExperimentItem[]> {
     const parquetPath = path.resolve(DATA_PATH);
@@ -80,6 +79,11 @@ async function loadData(limit: number): Promise<ExperimentItem[]> {
     // 데이터 섞기 (Shuffle)
     attacks.sort(() => .5 - Math.random());
     benigns.sort(() => .5 - Math.random());
+
+    // 데이터가 부족할 경우 경고
+    if (attacks.length < half || benigns.length < half) {
+        console.warn(`경고: 요청된 데이터 수(${half})보다 실제 데이터가 적습니다. (공격: ${attacks.length}, 정상: ${benigns.length})`);
+    }
 
     return [
         ...attacks.slice(0, half),
@@ -144,6 +148,7 @@ async function runStrategy(
 
 async function main() {
     console.log("IPI 탐지 실험 초기화 중...");
+    console.log(`설정: 총 ${TOTAL_SAMPLE_SIZE}개 (공격 500 + 정상 500) 샘플 사용`);
 
     // 서비스 초기화
     const vectorStore = VectorStore.getInstance();
@@ -153,7 +158,6 @@ async function main() {
 
     // 데이터 로드
     const fullDataset = await loadData(TOTAL_SAMPLE_SIZE);
-    const smallDataset = fullDataset.slice(0, LLM_SAMPLE_SIZE); // LLM 전용 실험을 위한 소규모 세트
 
     // 실험 1: Vector Only (벡터 전용)
     // 0.85를 단독 임계값으로 사용하여 성능 측정
@@ -207,14 +211,12 @@ async function main() {
     // 1. Vector Only
     results.push(await runStrategy("Vector Only (유사도 > 0.85)", fullDataset, runVectorOnly));
 
-    // 2. LLM Only (소규모 데이터셋)
-    results.push(await runStrategy("LLM Only (Direct Check)", smallDataset, runLLMOnly));
+    // 2. LLM Only (전체 데이터셋 - 주의: 비용 발생)
+    console.warn("주의: LLM Only 실험은 전체 데이터셋에 대해 OpenAI API를 호출합니다. 시간이 오래 걸릴 수 있습니다.");
+    results.push(await runStrategy("LLM Only (Direct Check)", fullDataset, runLLMOnly));
 
     // 3. Hybrid (전체 데이터셋)
     results.push(await runStrategy("Hybrid (Vector + LLM)", fullDataset, runHybrid));
-
-    // 4. Hybrid (소규모 데이터셋 - LLM Only와 직접 비교용)
-    results.push(await runStrategy("Hybrid (소규모 - 비교용)", smallDataset, runHybrid));
 
 
     // 결과 출력 (Print Results)
