@@ -137,6 +137,8 @@ export async function detectIPI(
         await vectorStore.initialize();
         const riskResult = await vectorStore.searchRisk(vectors);
 
+        console.log(`[IPI Debug] Tool: ${toolName}, ContentLen: ${contentStr.length}, Vectors: ${vectors.length}, RiskScore: ${riskResult.score.toFixed(4)}`);
+
         // 하이브리드 임계값 설정
         // 0.55 ~ 0.87 LLM 호출 %대비 가장 높은 공격 탐지율을 보이는 수치.
         const HIGH_RISK_THRESHOLD = 0.87;

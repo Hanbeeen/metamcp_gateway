@@ -110,7 +110,7 @@ MetaMCP가 Notion과 통신할 수 있도록 서버를 등록합니다.
     - **Args:** `-y @notionhq/notion-mcp-server`
         > **팁:** `-y` 옵션은 자동 설치 승인을 위해 필수입니다.
     - **Environment Variables:**
-        - `NOTION_API_KEY`: `secret_...` (발급받은 Notion 키 입력)
+        - `NOTION_TOKEN=...` (발급받은 Notion 키 입력)
 3.  **Save** 클릭. "Connected" 상태가 되면 성공입니다.
 
 ### 4.2. Gateway 엔드포인트 생성
@@ -135,7 +135,7 @@ Cursor가 접속할 수 있는 '문'을 만듭니다.
 2.  **Add new MCP server** 클릭.
     - **Name:** `MetaMCP`
     - **Type:** `SSE`
-    - **URL:** 위에서 복사한 SSE URL 붙여넣기 (`http://localhost:12009/metamcp/cursor-connect/sse`)
+    - **URL:** 위에서 복사한 SSE URL 붙여넣기 (`http://localhost:12008/metamcp/cursor-connect/sse`)
 3.  **Add** 클릭. 초록색 불(🟢)이 들어오면 연결 성공입니다!
 
 ---
