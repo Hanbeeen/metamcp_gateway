@@ -1,8 +1,8 @@
 "use client";
 
 import { IPIDecision } from "@repo/zod-types";
-import { AlertTriangle, CheckCircle, ShieldAlert, XCircle } from "lucide-react";
-import { useState } from "react";
+import { AlertTriangle, CheckCircle, ShieldAlert, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ export default function IPIDetectionPage() {
     const [selectedDecision, setSelectedDecision] = useState<IPIDecision | null>(
         null,
     );
+    const [showOriginalContent, setShowOriginalContent] = useState(false);
 
     // 실시간 업데이트를 위해 2초마다 이력 폴링
     const { data: history, isLoading } = trpc.frontend.ipi.getHistory.useQuery(
@@ -39,6 +40,38 @@ export default function IPIDetectionPage() {
             refetchInterval: 2000,
         },
     );
+
+    // 알림 로직: 새로운 Pending 항목이 생기면 토스트 알림
+    const prevPendingCountRef = React.useRef(0);
+
+    React.useEffect(() => {
+        if (!history) return;
+
+        const currentPendingCount = history.filter(h => h.status === "pending").length;
+
+        // 이전보다 Pending 개수가 늘었다면 새 위협 발생으로 간주
+        if (currentPendingCount > prevPendingCountRef.current) {
+            toast.warning("⚠️ New Threat Detected!", {
+                description: "Review required in IPI Detection page.",
+                duration: 5000,
+                action: {
+                    label: "View",
+                    onClick: () => {
+                        // 현재 페이지에 있으므로 가장 최신 pending 항목 선택
+                        const latestPending = history.find(h => h.status === "pending");
+                        if (latestPending) setSelectedDecision(latestPending);
+                    }
+                }
+            });
+
+            // (선택 사항) 브라우저 알림 API 호출 가능
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("MetaMCP: Threat Detected", { body: "Action required on tool output." });
+            }
+        }
+
+        prevPendingCountRef.current = currentPendingCount;
+    }, [history]);
 
     const resolveMutation = trpc.frontend.ipi.resolve.useMutation({
         onSuccess: () => {
@@ -198,43 +231,51 @@ export default function IPIDetectionPage() {
 
                                 {selectedDecision.analysisReport && (
                                     <div className="space-y-4">
-                                        <h3 className="text-sm font-medium flex items-center gap-2">
-                                            <span className="text-primary">✨</span> AI Analysis Report
+                                        <h3 className="text-lg font-semibold flex items-center gap-2 text-primary">
+                                            <ShieldAlert className="h-5 w-5" />
+                                            Security Analysis Report
                                         </h3>
 
-                                        {/* JSON 리포트 파싱 및 렌더링 */}
                                         {(() => {
                                             try {
                                                 const report = JSON.parse(selectedDecision.analysisReport);
                                                 return (
-                                                    <div className="space-y-3 p-4 rounded-md bg-primary/5 border border-primary/10">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex gap-2 items-center">
-                                                                <span className="text-xs font-semibold uppercase text-muted-foreground">Type:</span>
-                                                                <Badge variant={report.isAttack ? "destructive" : "outline"}>
-                                                                    {report.threatType || "Unknown"}
-                                                                </Badge>
+                                                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+                                                        <div className={`p-4 border-b ${report.isAttack ? "bg-red-500/10" : "bg-green-500/10"}`}>
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge variant={report.isAttack ? "destructive" : "outline"} className="text-base px-3 py-1">
+                                                                        {report.threatType?.replace(/_/g, " ") || "THREAT DETECTED"}
+                                                                    </Badge>
+                                                                    {/* 분석 출처 표시 (LLM vs Cache) */}
+                                                                    {report.analysisSource && (
+                                                                        <Badge variant="secondary" className="text-xs bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700">
+                                                                            {report.analysisSource === "LLM" ? "🤖 AI Verified" : "⚡ Known Pattern"}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <span className="text-muted-foreground font-medium">Confidence Score:</span>
+                                                                    <span className={`font-bold ${report.confidence > 0.8 ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"}`}>
+                                                                        {(report.confidence * 100).toFixed(1)}%
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex gap-2 items-center">
-                                                                <span className="text-xs font-semibold uppercase text-muted-foreground">Confidence:</span>
-                                                                <span className={`text-xs font-bold ${report.confidence > 0.8 ? "text-red-500" : "text-yellow-500"}`}>
-                                                                    {(report.confidence * 100).toFixed(0)}%
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="text-sm">
-                                                            <span className="font-semibold block mb-1 text-xs uppercase text-muted-foreground">Reasoning:</span>
-                                                            <p className="leading-relaxed">{report.reasoning || report.reason}</p>
+                                                            <p className="font-medium leading-relaxed text-foreground/90">
+                                                                {report.reasoning || report.reason}
+                                                            </p>
                                                         </div>
 
                                                         {report.highlightedSnippets && report.highlightedSnippets.length > 0 && (
-                                                            <div>
-                                                                <span className="font-semibold block mb-1 text-xs uppercase text-muted-foreground">Suspicious Snippets:</span>
-                                                                <div className="space-y-1">
+                                                            <div className="p-4 bg-muted/30 space-y-3">
+                                                                <h4 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                                                    <AlertTriangle className="h-3 w-3" />
+                                                                    Suspicious Content Detected
+                                                                </h4>
+                                                                <div className="space-y-2">
                                                                     {report.highlightedSnippets.map((snippet: string, idx: number) => (
-                                                                        <div key={idx} className="bg-background/50 p-2 rounded text-xs font-mono border text-destructive break-all">
-                                                                            "{snippet}"
+                                                                        <div key={idx} className="bg-red-500/5 border border-red-200 dark:border-red-900/50 p-3 rounded-md text-sm font-mono text-red-700 dark:text-red-400 break-all">
+                                                                            "{snippet.length > 300 ? snippet.slice(0, 300) + "..." : snippet}"
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -242,17 +283,18 @@ export default function IPIDetectionPage() {
                                                         )}
 
                                                         {report.suggestedAction && (
-                                                            <div className="pt-2 border-t border-primary/10 flex justify-between items-center">
-                                                                <span className="text-xs font-semibold uppercase text-muted-foreground">AI Suggestion:</span>
-                                                                <Badge variant="outline" className="uppercase">{report.suggestedAction}</Badge>
+                                                            <div className="p-3 bg-muted/50 border-t flex justify-between items-center text-sm">
+                                                                <span className="font-medium text-muted-foreground">Recommended Action:</span>
+                                                                <Badge variant="secondary" className="uppercase tracking-wider">
+                                                                    {report.suggestedAction}
+                                                                </Badge>
                                                             </div>
                                                         )}
                                                     </div>
                                                 );
                                             } catch (e) {
-                                                // 레거시 텍스트 리포트 처리
                                                 return (
-                                                    <div className="p-4 rounded-md bg-primary/5 text-sm whitespace-pre-wrap border border-primary/20">
+                                                    <div className="p-4 rounded-lg bg-muted border font-mono text-sm whitespace-pre-wrap">
                                                         {selectedDecision.analysisReport}
                                                     </div>
                                                 );
@@ -261,11 +303,25 @@ export default function IPIDetectionPage() {
                                     </div>
                                 )}
 
-                                <div className="space-y-2">
-                                    <h3 className="text-sm font-medium">Original Content</h3>
-                                    <div className="p-4 rounded-md bg-muted/50 font-mono text-xs whitespace-pre-wrap max-h-[300px] overflow-auto border">
-                                        {JSON.stringify(selectedDecision.content, null, 2)}
-                                    </div>
+                                <div className="space-y-2 pt-4 border-t">
+                                    <button
+                                        onClick={() => setShowOriginalContent(!showOriginalContent)}
+                                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                                    >
+                                        {showOriginalContent ? (
+                                            <ChevronUp className="h-4 w-4" />
+                                        ) : (
+                                            <ChevronDown className="h-4 w-4" />
+                                        )}
+                                        {showOriginalContent ? "Hide Original Content" : "View Original Content (JSON)"}
+                                        <div className="flex-1 h-px bg-border ml-2" />
+                                    </button>
+
+                                    {showOriginalContent && (
+                                        <div className="p-4 rounded-md bg-zinc-950 text-zinc-50 font-mono text-xs whitespace-pre-wrap max-h-[400px] overflow-auto border shadow-inner">
+                                            {JSON.stringify(selectedDecision.content, null, 2)}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {selectedDecision.status === "pending" && (

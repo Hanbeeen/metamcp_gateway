@@ -11,58 +11,80 @@ import { LocalEmbeddingService } from "./embedder";
 import { IPILLMVerifier } from "./llm-verifier";
 
 /**
- * 재귀적으로 객체를 순회하며 IPI 탐지에 유의미한 텍스트만 추출합니다.
- * Notion, Slack 등 다양한 MCP 툴의 응답 구조(content, text, body 등)를 커버합니다.
- * 
- * @param obj - 분석할 객체
- * @param depth - 현재 재귀 깊이 (Internal use)
- * @param maxDepth - 최대 재귀 깊이 (Stack Overflow 방지, 기본 5)
- * @param maxLength - 최대 추출 텍스트 길이 (Token Limit 방지, 기본 10000자)
+ * 키 이름에 특정 단어(text, content 등)가 '포함'된 모든 문자열 값을 추출합니다.
+ * 예: "plain_text", "rich_text", "body_content" 등 모두 감지 가능
  */
-function extractRelevantContent(
+function extractContentByPartialMatch(
     obj: any,
     depth: number = 0,
-    maxDepth: number = 5,
-    maxLength: number = 10000
+    maxDepth: number = 20,
+    maxLength: number = 30000
 ): string {
     if (!obj) return "";
-    if (depth > maxDepth) return ""; // 깊이 제한 초과 시 중단
+    if (depth > maxDepth) return "";
 
-    if (typeof obj === "string") return obj.substring(0, maxLength); // 문자열은 즉시 반환
-    if (typeof obj !== "object") return String(obj);
-
+    // 배열인 경우 내부 요소들을 재귀적으로 탐색
     if (Array.isArray(obj)) {
-        let arrayResult = "";
-        for (const item of obj) {
-            if (arrayResult.length >= maxLength) break;
-            const extracted = extractRelevantContent(item, depth + 1, maxDepth, maxLength);
-            arrayResult += extracted + "\n";
-        }
-        return arrayResult.trim();
+        return obj
+            .map(item => extractContentByPartialMatch(item, depth + 1, maxDepth, maxLength))
+            .filter(str => str.length > 0)
+            .join("\n");
     }
 
-    const TARGET_KEYS = ["content", "text", "body", "message", "summary", "description", "value", "markdown"];
+    if (typeof obj !== "object") return "";
+
+    // ✅ 검사할 핵심 키워드 목록
+    const TARGET_KEYWORDS = [
+        "content", "text", "body", "message",
+        "summary", "description", "value", "markdown"
+    ];
+
     let extracted = "";
 
     for (const key in obj) {
-        if (extracted.length >= maxLength) break; // 길이 제한 도달 시 중단
+        if (extracted.length >= maxLength) break;
 
-        // 1. 주요 키값 우선 추출
-        if (TARGET_KEYS.includes(key.toLowerCase())) {
-            const val = obj[key];
-            if (typeof val === "string") {
-                extracted += val + "\n";
-            } else if (typeof val === "object") {
-                extracted += extractRelevantContent(val, depth + 1, maxDepth, maxLength) + "\n";
+        const val = obj[key];
+        const lowerKey = key.toLowerCase();
+
+        // 1. 키 이름에 타겟 키워드가 하나라도 '포함'되어 있는지 확인 (Partial Match)
+        // 예: "plain_text"에는 "text"가 포함되므로 통과!
+        const isTargetKey = TARGET_KEYWORDS.some(keyword => lowerKey.includes(keyword));
+
+        // 2. 키워드가 포함되어 있고, 값이 '문자열'이면 추출
+        if (isTargetKey && typeof val === "string") {
+            // 중첩된 JSON 문자열인지 확인 (예: Tool 결과가 JSON string인 경우)
+            if (val.trim().startsWith("{") || val.trim().startsWith("[")) {
+                try {
+                    const parsed = JSON.parse(val);
+                    const deepContent = extractContentByPartialMatch(parsed, depth + 1, maxDepth, maxLength);
+                    // 내부에서 유의미한 텍스트를 찾았다면 그것을 사용
+                    if (deepContent.length > 0) {
+                        extracted += deepContent + "\n";
+                        continue;
+                    }
+                } catch (e) {
+                    // JSON 파싱 실패 시 일반 텍스트로 처리
+                }
             }
+
+            // 너무 짧은 노이즈나 URL 제외 (필요시 주석 해제)
+            // if (val.length > 1 && !val.startsWith("http")) {
+            extracted += val + "\n";
+            // }
         }
-        // 2. 객체라면 깊이 탐색 (단, 시스템 메타데이터 등은 제외 가능)
-        else if (typeof obj[key] === "object") {
-            extracted += extractRelevantContent(obj[key], depth + 1, maxDepth, maxLength) + "\n";
+
+        // 3. 값이 객체나 배열이면 재귀 탐색 (키 이름 상관없이 내용은 뒤져봐야 함)
+        else if (typeof val === "object") {
+            const childText = extractContentByPartialMatch(val, depth + 1, maxDepth, maxLength);
+            if (childText) {
+                extracted += childText + "\n";
+            }
         }
     }
 
-    return extracted.trim().substring(0, maxLength); // 최종 길이 안전장치
+    // 결과 정제
+    return extracted.replace(/\n{2,}/g, "\n").trim().substring(0, maxLength);
 }
 
 /**
@@ -104,7 +126,8 @@ export async function detectIPI(
 ): Promise<{ detected: boolean; reason?: string; analysisReport?: string }> {
     try {
         // 스마트 콘텐츠 추출: 불필요한 JSON 구조를 제거하고 알맹이 텍스트만 분석
-        let contentStr = extractRelevantContent(result.content);
+        let contentStr = extractContentByPartialMatch(result.content);
+        console.log("[DEBUG] Extracted Content:", contentStr);
 
         // 추출된 텍스트가 너무 짧으면(예: 메타데이터만 가득한 경우) 원본 JSON 사용
         if (contentStr.length < 10) {
@@ -113,6 +136,8 @@ export async function detectIPI(
 
         // 1. 텍스트 분할 (Dense Window Chunking)
         const chunks = chunkDenseWindow(contentStr);
+
+        console.log("[DEBUG] Extracted Content for Embedding:", chunks);
 
         // 2. 청크 임베딩 (Batch Processing)
         const embedder = LocalEmbeddingService.getInstance();
@@ -141,19 +166,54 @@ export async function detectIPI(
 
         // 하이브리드 임계값 설정
         // 0.55 ~ 0.87 LLM 호출 %대비 가장 높은 공격 탐지율을 보이는 수치.
+        // 강제 LLM 호출 테스트를 위해 임계값을 0.99로 상향 조정
         const HIGH_RISK_THRESHOLD = 0.87;
         const AMBIGUOUS_THRESHOLD = 0.55;
 
         // Case A: 고신뢰도 공격 (Score > 0.87) - 즉시 차단
         if (riskResult.score > HIGH_RISK_THRESHOLD) {
+            // 벡터 DB에서 매칭된 유사 공격 패턴 가져오기
+            const matchedAttacks = riskResult.similarAttacks || [];
+            const topMatch = matchedAttacks.length > 0 ? matchedAttacks[0] : "Unknown pattern";
+
+            // 입력 텍스트 중 가장 위험한 부분도 식별
+            let dangerousInputSnippet = "";
+            const snippetsToHighlight: string[] = [];
+
+            if (riskResult.chunkScores && riskResult.chunkScores.length > 0) {
+                // 점수와 인덱스를 매핑하여 정렬 (상위 5개 추출)
+                const scoredChunks = riskResult.chunkScores
+                    .map((score, index) => ({ score, index }))
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+
+                for (const item of scoredChunks) {
+                    if (chunks[item.index]) {
+                        snippetsToHighlight.push(chunks[item.index]);
+                    }
+                }
+
+                // 가장 위험한 문장은 첫 번째로 설정 (호환성 유지)
+                if (scoredChunks.length > 0 && chunks[scoredChunks[0].index]) {
+                    dangerousInputSnippet = chunks[scoredChunks[0].index];
+                }
+            }
+
+            console.log(`snippetsToHighlight ${snippetsToHighlight}`);
             return {
                 detected: true,
-                reason: `고신뢰도 벡터 탐지 (점수: ${riskResult.score.toFixed(2)}): ${riskResult.reason}`,
+                reason: `High risk content detected (Similar to: "${topMatch.substring(0, 100)}...")`,
                 analysisReport: JSON.stringify({
                     isAttack: true,
                     confidence: riskResult.score,
-                    reasoning: "High similarity to known attack vector in database.",
-                    threatType: "known_pattern"
+                    reasoning: `Highly similar to known attack patterns in database.`,
+                    threatType: "known_pattern",
+                    // 마스킹을 위해 실제 입력 텍스트 중 위험한 부분을 전달
+                    highlightedSnippets: snippetsToHighlight,
+                    // 참고용 유사 패턴 (UI 표시용)
+                    similarPatterns: matchedAttacks,
+                    suggestedAction: "block",
+                    analysisSource: "Cache"
                 }, null, 2),
             };
         }
@@ -163,11 +223,13 @@ export async function detectIPI(
         if (riskResult.score >= AMBIGUOUS_THRESHOLD) {
             console.log(`[IPI Middleware] 애매한 위험 점수 (${riskResult.score.toFixed(2)}). LLM 검증 시작...`);
             const llmVerifier = IPILLMVerifier.getInstance();
-            // 추출된 텍스트 컨텍스트를 전달
-            const verification = await llmVerifier.verifyContent(
+
+            // 추출된 텍스트 컨텍스트와 함께, 벡터 DB에서 찾은 유사 공격 패턴(Hint)도 전달합니다.
+            const verification = await llmVerifier.verifyContentWithFewShot(
                 contentStr,
                 `Tool: ${toolName}`,
-                riskResult.score
+                riskResult.score,
+                riskResult.similarAttacks || []
             );
 
             if (verification.isAttack) {
@@ -234,14 +296,43 @@ export function createIPIDetectionMiddleware(options: {
                             throw new Error("보안 위험으로 인해 사용자에 의해 툴 실행이 차단되었습니다.");
 
                         case "masked":
-                            // 콘텐츠 마스킹 처리
+                            // 콘텐츠 부분 마스킹 처리
+                            let snippetsToMask: string[] = [];
+                            try {
+                                if (decision.analysisReport) {
+                                    const report = JSON.parse(decision.analysisReport);
+                                    if (Array.isArray(report.highlightedSnippets)) {
+                                        snippetsToMask = report.highlightedSnippets;
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("[IPI Middleware] 리포트 파싱 실패, 전체 마스킹으로 전환");
+                            }
+
                             return {
                                 ...result,
                                 content: result.content.map((item) => {
                                     if (item.type === "text") {
+                                        let maskedText = item.text;
+
+                                        if (snippetsToMask.length > 0) {
+                                            // 1. 특정된 위협 부분만 가리기 (Partial Masking)
+                                            snippetsToMask.forEach(snippet => {
+                                                if (snippet && snippet.length > 0) {
+                                                    // 정규식 특수문자 이스케이프 후 전역 치환
+                                                    const escaped = snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                                    const regex = new RegExp(escaped, 'gi');
+                                                    maskedText = maskedText.replace(regex, '***(MASKED)***');
+                                                }
+                                            });
+                                        } else {
+                                            // 2. 위협 위치를 모를 경우 전체 가리기 (Fallback)
+                                            maskedText = "*** 사용자에 의해 마스킹 처리됨 ***";
+                                        }
+
                                         return {
                                             ...item,
-                                            text: "*** 사용자에 의해 마스킹 처리됨 ***",
+                                            text: maskedText,
                                         };
                                     }
                                     return item;

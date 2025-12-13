@@ -74,6 +74,7 @@ async function main() {
                                 id: ++count,
                                 vector: vecArray,
                                 label: labelStr,
+                                text: row.text,
                             });
                         }
                     }

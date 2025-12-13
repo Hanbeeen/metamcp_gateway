@@ -34,6 +34,10 @@ export const createConfigRouter = (implementations: {
   setSessionLifetime: (input: {
     lifetime?: number | null;
   }) => Promise<{ success: boolean }>;
+  getOpenaiApiKey: () => Promise<string | undefined>;
+  setOpenaiApiKey: (input: {
+    apiKey: string;
+  }) => Promise<{ success: boolean }>;
   getAllConfigs: () => Promise<
     Array<{ id: string; value: string; description?: string | null }>
   >;
@@ -121,6 +125,16 @@ export const createConfigRouter = (implementations: {
       .input(z.object({ lifetime: z.number().min(300000).max(86400000).nullable().optional() }))
       .mutation(async ({ input }) => {
         return await implementations.setSessionLifetime(input);
+      }),
+
+    getOpenaiApiKey: protectedProcedure.query(async () => {
+      return await implementations.getOpenaiApiKey();
+    }),
+
+    setOpenaiApiKey: protectedProcedure
+      .input(z.object({ apiKey: z.string() }))
+      .mutation(async ({ input }) => {
+        return await implementations.setOpenaiApiKey(input);
       }),
 
     getAllConfigs: protectedProcedure.query(async () => {

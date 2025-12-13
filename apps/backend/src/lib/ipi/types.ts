@@ -9,6 +9,8 @@ export interface IPIVectorData {
     vector: number[];
     /** 레이블 (예: "attack" - 공격, "benign" - 정상) */
     label: string;
+    /** 원본 텍스트 (Few-shot 프롬프트 제공용) */
+    text?: string;
 }
 
 /**
@@ -22,6 +24,10 @@ export interface IPIDetectionResult {
     score: number;
     /** 탐지 사유 (탐지된 경우에만 포함, 예: "High risk patterns: ...") */
     reason?: string;
+    /** 유사한 공격 텍스트 (LLM Few-shot 제공용) */
+    similarAttacks?: string[];
+    /** 각 청크별 위험 점수 배열 */
+    chunkScores?: number[];
 }
 
 export type IPIDecisionStatus = "pending" | "allowed" | "masked" | "blocked";

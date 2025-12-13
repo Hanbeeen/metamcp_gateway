@@ -97,6 +97,17 @@ export const configImplementations = {
     return await configService.getAllConfigs();
   },
 
+  getOpenaiApiKey: async (): Promise<string | undefined> => {
+    return await configService.getOpenaiApiKey();
+  },
+
+  setOpenaiApiKey: async (input: {
+    apiKey: string;
+  }): Promise<{ success: boolean }> => {
+    await configService.setOpenaiApiKey(input.apiKey);
+    return { success: true };
+  },
+
   setConfig: async (input: SetConfigRequest): Promise<{ success: boolean }> => {
     await configService.setConfig(input.key, input.value, input.description);
     return { success: true };

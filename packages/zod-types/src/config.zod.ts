@@ -10,6 +10,7 @@ export const ConfigKeyEnum = z.enum([
   "MCP_MAX_TOTAL_TIMEOUT",
   "MCP_MAX_ATTEMPTS",
   "SESSION_LIFETIME",
+  "OPENAI_API_KEY",
 ]);
 
 // Config schema
@@ -83,6 +84,7 @@ export const SettingsFormSchema = z.object({
   mcpMaxTotalTimeout: z.number().int(),
   mcpMaxAttempts: z.number().int(),
   sessionLifetime: z.number().int().min(5).max(1440).nullable().optional(),
+  openaiApiKey: z.string().optional(),
 });
 
 export type SettingsFormData = z.infer<typeof SettingsFormSchema>;

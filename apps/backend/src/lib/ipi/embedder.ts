@@ -13,6 +13,9 @@ export class LocalEmbeddingService {
     // 사용할 모델 이름 (가볍고 빠른 all-MiniLM-L6-v2 사용)
     private modelName = "Xenova/all-MiniLM-L6-v2";
 
+    // 모델 로딩 프로미스 (중복 로딩 방지)
+    private initializationPromise: Promise<void> | null = null;
+
     // private 생성자: 외부에서 new LocalEmbeddingService() 호출 방지
     private constructor() { }
 
@@ -28,16 +31,29 @@ export class LocalEmbeddingService {
     }
 
     /**
+     * 모델 초기화를 보장합니다.
+     * 동시에 여러 요청이 들어와도 한 번만 로딩되도록 처리합니다.
+     */
+    private async ensureInitialized() {
+        if (this.extractor) return;
+
+        if (!this.initializationPromise) {
+            this.initializationPromise = (async () => {
+                console.log(`[LocalEmbeddingService] 모델 로딩 중: ${this.modelName}...`);
+                this.extractor = await pipeline("feature-extraction", this.modelName);
+            })();
+        }
+
+        await this.initializationPromise;
+    }
+
+    /**
      * 텍스트를 임베딩 벡터로 변환합니다.
      * @param text 변환할 텍스트
      * @returns 384차원 숫자 배열 (벡터)
      */
     async getEmbedding(text: string): Promise<number[]> {
-        // 모델이 로드되지 않았으면 로드합니다.
-        if (!this.extractor) {
-            console.log(`[LocalEmbeddingService] 모델 로딩 중: ${this.modelName}...`);
-            this.extractor = await pipeline("feature-extraction", this.modelName);
-        }
+        await this.ensureInitialized();
 
         // 텍스트를 벡터로 변환
         // pooling: 'mean' -> 단어 벡터들의 평균을 구해서 문장 벡터 생성
@@ -54,10 +70,7 @@ export class LocalEmbeddingService {
      * @returns 벡터 배열
      */
     async getEmbeddings(texts: string[]): Promise<number[][]> {
-        if (!this.extractor) {
-            console.log(`[LocalEmbeddingService] 모델 로딩 중: ${this.modelName}...`);
-            this.extractor = await pipeline("feature-extraction", this.modelName);
-        }
+        await this.ensureInitialized();
 
         // 배치 처리
         const output = await this.extractor(texts, { pooling: "mean", normalize: true });

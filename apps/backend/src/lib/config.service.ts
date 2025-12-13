@@ -129,6 +129,22 @@ export const configService = {
       );
     }
   },
+  async getOpenaiApiKey(): Promise<string | undefined> {
+    const config = await configRepo.getConfig(ConfigKeyEnum.Enum.OPENAI_API_KEY);
+    return config?.value;
+  },
+
+  async setOpenaiApiKey(apiKey: string): Promise<void> {
+    if (!apiKey) {
+      await configRepo.deleteConfig(ConfigKeyEnum.Enum.OPENAI_API_KEY);
+    } else {
+      await configRepo.setConfig(
+        ConfigKeyEnum.Enum.OPENAI_API_KEY,
+        apiKey,
+        "OpenAI API Key for IPI Detection",
+      );
+    }
+  },
 
   async getConfig(key: ConfigKey): Promise<string | undefined> {
     const config = await configRepo.getConfig(key);

@@ -12,9 +12,9 @@ export class VectorStore {
     private static instance: VectorStore;
     private index: hnswlib.HierarchicalNSW | null = null;
 
-    // 메타데이터 저장소: ID -> { label }
+    // 메타데이터 저장소: ID -> { label, text }
     // 메모리 절약을 위해 riskScore는 저장하지 않고 label로 판단합니다.
-    private metadataMap: Map<number, { label: string }> = new Map();
+    private metadataMap: Map<number, { label: string; text?: string }> = new Map();
 
     private readonly dataDir: string;
     private readonly indexFile: string;
@@ -83,7 +83,7 @@ export class VectorStore {
             // JSON 객체를 Map으로 변환
             this.metadataMap = new Map();
             for (const [key, value] of Object.entries(parsed)) {
-                this.metadataMap.set(Number(key), value as { label: string });
+                this.metadataMap.set(Number(key), value as { label: string; text?: string });
             }
             console.log(`[VectorStore] ${this.metadataMap.size}개의 메타데이터 로드 완료.`);
         } catch (e) {
@@ -116,6 +116,7 @@ export class VectorStore {
                 this.index!.addPoint(item.vector, item.id);
                 this.metadataMap.set(item.id, {
                     label: item.label,
+                    text: item.text,
                 });
             } catch (e) {
                 console.error(`[VectorStore] 아이템 추가 실패 (ID: ${item.id}):`, e);
@@ -151,6 +152,7 @@ export class VectorStore {
         try {
             const chunkScores: number[] = []; // 각 청크별 위험 점수
             const allReasons: string[] = []; // 탐지된 이유들
+            const allCandidates: { text: string; similarity: number }[] = []; // 유사 텍스트 후보
 
             for (const vector of queryVectors) {
                 // k-NN 검색 수행 (가장 가까운 k개의 이웃 찾기)
@@ -177,6 +179,11 @@ export class VectorStore {
                     if (isAttack) {
                         attackWeight += similarity;
                         chunkReasons.push(`${meta.label}(${(similarity * 100).toFixed(1)}%)`);
+
+                        // 공격 텍스트 수집 (텍스트가 있는 경우)
+                        if (meta.text) {
+                            allCandidates.push({ text: meta.text, similarity });
+                        }
                     }
 
                     totalWeight += similarity;
@@ -186,9 +193,24 @@ export class VectorStore {
                 const score = attackWeight / totalWeight;
                 chunkScores.push(score);
 
-                // 위험 점수가 0.5를 넘으면 이유 기록
                 if (score > 0.5) {
                     allReasons.push(`Chunk risk ${score.toFixed(2)}: [${chunkReasons.join(", ")}]`);
+                }
+            }
+
+            // 유사한 공격 텍스트 수집 (Top-N)
+            // 위 루프에서 수집된 모든 이웃 중 'attack'이면서 유사도가 높은 순으로 정렬
+            allCandidates.sort((a, b) => b.similarity - a.similarity);
+
+            const similarAttacks: string[] = [];
+            const seenTexts = new Set<string>();
+
+            // 중복 제거하며 상위 3개 추출
+            for (const cand of allCandidates) {
+                if (!seenTexts.has(cand.text)) {
+                    seenTexts.add(cand.text);
+                    similarAttacks.push(cand.text);
+                    if (similarAttacks.length >= 3) break;
                 }
             }
 
@@ -209,7 +231,9 @@ export class VectorStore {
             return {
                 detected: isDetected,
                 score: finalRisk,
-                reason: isDetected ? `High risk patterns: ${allReasons.join("; ")}` : undefined
+                reason: isDetected ? `High risk patterns: ${allReasons.join("; ")}` : undefined,
+                similarAttacks,
+                chunkScores // 원본 텍스트 매핑을 위해 청크별 점수 반환
             };
 
         } catch (error) {

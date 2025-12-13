@@ -39,6 +39,7 @@ export default function SettingsPage() {
       mcpMaxTotalTimeout: 60000,
       mcpMaxAttempts: 1,
       sessionLifetime: null, // Default to infinite (null)
+      openaiApiKey: "",
     },
   });
 
@@ -96,6 +97,12 @@ export default function SettingsPage() {
     isLoading: sessionLifetimeLoading,
     refetch: refetchSessionLifetime,
   } = trpc.frontend.config.getSessionLifetime.useQuery();
+
+  const {
+    data: openaiApiKeyData,
+    isLoading: openaiApiKeyLoading,
+    refetch: refetchOpenaiApiKey,
+  } = trpc.frontend.config.getOpenaiApiKey.useQuery();
 
   // Mutations
   const setSignupDisabledMutation =
@@ -189,6 +196,18 @@ export default function SettingsPage() {
       },
     });
 
+  const setOpenaiApiKeyMutation =
+    trpc.frontend.config.setOpenaiApiKey.useMutation({
+      onSuccess: (data) => {
+        if (data.success) {
+          refetchOpenaiApiKey();
+          setHasUnsavedChanges(false);
+        } else {
+          console.error("Failed to update OpenAI API Key");
+        }
+      },
+    });
+
   // Update local state when data is loaded
   useEffect(() => {
     if (signupDisabled !== undefined) {
@@ -250,7 +269,8 @@ export default function SettingsPage() {
       mcpTimeoutData !== undefined &&
       mcpMaxTotalTimeoutData !== undefined &&
       mcpMaxAttemptsData !== undefined &&
-      sessionLifetimeData !== undefined
+      sessionLifetimeData !== undefined &&
+      openaiApiKeyData !== undefined
     ) {
       // Convert milliseconds to minutes for session lifetime
       const lifetimeInMinutes = sessionLifetimeData
@@ -261,6 +281,7 @@ export default function SettingsPage() {
         mcpMaxTotalTimeout: mcpMaxTotalTimeoutData,
         mcpMaxAttempts: mcpMaxAttemptsData,
         sessionLifetime: lifetimeInMinutes,
+        openaiApiKey: openaiApiKeyData || "",
       });
     }
   }, [
@@ -268,6 +289,7 @@ export default function SettingsPage() {
     mcpMaxTotalTimeoutData,
     mcpMaxAttemptsData,
     sessionLifetimeData,
+    openaiApiKeyData,
     form,
   ]);
 
@@ -377,6 +399,9 @@ export default function SettingsPage() {
               ? data.sessionLifetime * 60000
               : null,
         }),
+        setOpenaiApiKeyMutation.mutateAsync({
+          apiKey: data.openaiApiKey || "",
+        }),
       ]);
       reset(data); // Reset form state to match current values
       toast.success(t("settings:saved"));
@@ -401,7 +426,10 @@ export default function SettingsPage() {
     mcpTimeoutLoading ||
     mcpMaxTotalLoading ||
     mcpMaxAttemptsLoading ||
-    sessionLifetimeLoading;
+    mcpMaxTotalLoading ||
+    mcpMaxAttemptsLoading ||
+    sessionLifetimeLoading ||
+    openaiApiKeyLoading;
 
   if (isLoading) {
     return (
@@ -484,6 +512,64 @@ export default function SettingsPage() {
                 onCheckedChange={handleBasicAuthToggle}
                 disabled={setBasicAuthDisabledMutation.isPending}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI & Security Settings</CardTitle>
+            <CardDescription>
+              Configure AI integrations for security monitoring (IPI Detection)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="openai-api-key" className="text-base">
+                OpenAI API Key
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Required for AI-based Indirect Prompt Injection (IPI) detection.
+                Leave empty to disable.
+              </p>
+              <div className="flex items-center gap-2">
+                <Controller
+                  name="openaiApiKey"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id="openai-api-key"
+                      type="password"
+                      placeholder="sk-..."
+                      className="max-w-md"
+                    />
+                  )}
+                />
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    const apiKey = form.getValues("openaiApiKey");
+                    try {
+                      await setOpenaiApiKeyMutation.mutateAsync({
+                        apiKey: apiKey || "",
+                      });
+                      toast.success(t("settings:saved"));
+                    } catch (error) {
+                      console.error("Failed to save API key:", error);
+                      toast.error(t("settings:error"), {
+                        description:
+                          error instanceof Error ? error.message : String(error),
+                      });
+                    }
+                  }}
+                  disabled={setOpenaiApiKeyMutation.isPending}
+                >
+                  {setOpenaiApiKeyMutation.isPending
+                    ? t("settings:loading")
+                    : t("settings:save")}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
