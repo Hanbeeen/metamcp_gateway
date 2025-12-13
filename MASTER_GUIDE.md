@@ -52,9 +52,11 @@ graph TD
 아래 절차를 순서대로 따라오시면 완벽한 데모 환경을 구축할 수 있습니다.
 
 ### 1단계: 컨테이너 실행
-터미널을 열고 다음 명령어를 입력하여 시스템을 실행합니다.
+터미널을 열고 GitHub 저장소를 클론한 뒤, 프로젝트 폴더로 이동하여 시스템을 실행합니다.
 
 ```bash
+git clone https://github.com/Hanbeeen/metamcp_gateway.git
+cd metamcp_gateway
 docker-compose up --build
 ```
 > **참고**: 최초 실행 시 이미지를 빌드하느라 시간이 조금 걸릴 수 있습니다.
