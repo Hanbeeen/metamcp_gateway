@@ -57,7 +57,7 @@ graph TD
 ```bash
 git clone https://github.com/Hanbeeen/metamcp_gateway.git
 cd metamcp_gateway
-docker-compose up --build
+docker compose up -d
 ```
 > **참고**: 최초 실행 시 이미지를 빌드하느라 시간이 조금 걸릴 수 있습니다.
 
