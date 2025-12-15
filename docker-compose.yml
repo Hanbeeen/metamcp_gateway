@@ -1,10 +1,10 @@
 services:
   app:
     container_name: metamcp
-    # image: ghcr.io/metatool-ai/metamcp:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: hunterhhunter/metamcp_gateway-app:latest
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     env_file:
       - .env
     ports:
