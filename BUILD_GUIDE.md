@@ -52,18 +52,19 @@ graph TD
 아래 절차를 순서대로 따라오시면 완벽한 데모 환경을 구축할 수 있습니다.
 
 ### 1단계: 컨테이너 실행
-터미널을 열고 GitHub 저장소를 클론한 뒤, 프로젝트 폴더로 이동하여 시스템을 실행합니다.
+터미널을 열고 프로젝트 폴더로 이동하여 시스템을 실행합니다.
 
 ```bash
-git clone https://github.com/Hanbeeen/metamcp_gateway.git
 cd metamcp_gateway
+type NUL > .env
 docker compose up -d
 ```
-> **참고**: 최초 실행 시 이미지를 빌드하느라 시간이 조금 걸릴 수 있습니다.
+> **참고**: 최초 실행 시 이미지를 빌드하느라 시간이 조금 걸릴 수 있습니다. + .env 파일이 존재해야합니다.
 
 ### 2단계: Admin Panel 접속
 브라우저를 열고 관리자 패널에 접속합니다.
 - URL: [http://localhost:12008](http://localhost:12008)
+그 후 **settings** 탭에 들어가 OPENAI_API_KEY를 입력하고 저장합니다.
 
 ### 3단계: MCP 서버 등록
 좌측 메뉴의 **Application** > **MCP Servers**를 클릭합니다.
@@ -79,9 +80,9 @@ docker compose up -d
 - **Command**: `npx`
 - **Arguments**: `-y @notionhq/notion-mcp-server`
 - **Environment Variables**:
-    - 키: `NOTION_TOKEN=`
-    - 값: `ntn_...` (발급받은 Notion API 토큰)
+    - `NOTION_TOKEN=ntn_...` (발급받은 Notion API 토큰)
     > **주의**: 테스트할 Notion 페이지에 해당 통합(Integration)이 연결되어 있어야 읽을 수 있습니다.
+    > https://www.notion.so/profile/integrations 에 들어가서 노션 token을 발급받고, 접근 가능한 페이지를 설정해야합니다.
 
 입력 후 **Save**를 눌러 저장합니다.
 
@@ -102,6 +103,7 @@ docker compose up -d
 ### 9단계: Cursor 설정 진입
 AI 에디터 **Cursor**를 실행하고 설정 화면으로 이동합니다.
 - 메뉴: `Settings` > `Features` > `MCP` > `Add new MCP server`
+  > 굳이 커서가 아닌 MCP를 사용할 수 있는 모든 LLM에서 설정 가능합니다. (커서가 가장 편리한 설정 방법)
 
 ### 10단계: Custom MCP 등록
 아래 JSON 형식으로 서버 정보를 입력하고 저장합니다. (Type: SSE)
@@ -110,7 +112,7 @@ AI 에디터 **Cursor**를 실행하고 설정 화면으로 이동합니다.
 {
   "mcpServers": {
     "MetaMCP": {
-      "url": "http://localhost:12009/metamcp/cursor-connect/sse"
+      "url": "http://localhost:12009/metamcp/cursor-connect/sse" (8단계에서 복사한 URL)
     }
   }
 }
